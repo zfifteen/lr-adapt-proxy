@@ -1,0 +1,100 @@
+{
+  "analysis_manifest_json": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/analysis_manifest.json",
+  "artifacts": {
+    "analysis_manifest_json": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/analysis_manifest.json",
+    "cell_stats_csv": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/cell_stats.csv",
+    "figure_method_delta": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/figures/method_median_delta_bar.png",
+    "figure_method_q_count": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/figures/method_q_lt_005_count_bar.png",
+    "figure_method_win_rate": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/figures/method_win_rate_bar.png",
+    "manifest_json": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/manifest.json",
+    "method_aggregate_csv": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/method_aggregate.csv",
+    "runs_long_csv": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/runs_long.csv",
+    "selected_params_json": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/selected_params.json",
+    "tuning_summary_csv": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/tuning_summary.csv"
+  },
+  "config_hash": "6ae43213b9af9bf0cbfb11ff0e17d6ada8f813f080ab58e10a0a48b242d93ddc",
+  "config_path": "experiments/config/high_rigor.yaml",
+  "created_at_utc": "2026-03-05T05:15:30.224017+00:00",
+  "execution": {
+    "failed_runs": 0,
+    "ok_runs": 21520,
+    "status_by_phase": [
+      {
+        "count": 18000,
+        "phase": "eval",
+        "status": "ok"
+      },
+      {
+        "count": 320,
+        "phase": "tune_baseline",
+        "status": "ok"
+      },
+      {
+        "count": 3200,
+        "phase": "tune_candidate",
+        "status": "ok"
+      }
+    ],
+    "total_runs": 21520
+  },
+  "manifest_json": "artifacts/runs/high-rigor/20260305T045953Z-6ae43213-repro-strict/results/manifest.json",
+  "run_id": "20260305T045953Z-6ae43213-repro-strict",
+  "run_scope": "high_rigor_rerun_pipeline",
+  "statistics": {
+    "method_ranking": [
+      {
+        "best_q_value": 1.9198452288232053e-17,
+        "cells_q_lt_0_05": 34,
+        "fraction_cells_median_delta_lt0": 0.5833333333333334,
+        "mean_loss_rate": 0.495,
+        "mean_win_rate": 0.505,
+        "median_of_cell_median_delta": -18.87208878679076,
+        "method": "lr_adapt_proxy",
+        "n_cells": 36
+      },
+      {
+        "best_q_value": 1.9198452288232053e-17,
+        "cells_q_lt_0_05": 33,
+        "fraction_cells_median_delta_lt0": 0.5833333333333334,
+        "mean_loss_rate": 0.4922222222222223,
+        "mean_win_rate": 0.5077777777777777,
+        "median_of_cell_median_delta": -18.836873235099056,
+        "method": "phasewall_plus_lr_tuned",
+        "n_cells": 36
+      },
+      {
+        "best_q_value": 0.0005745818520207,
+        "cells_q_lt_0_05": 2,
+        "fraction_cells_median_delta_lt0": 0.5833333333333334,
+        "mean_loss_rate": 0.4938888888888888,
+        "mean_win_rate": 0.5061111111111111,
+        "median_of_cell_median_delta": -0.0783689937377419,
+        "method": "phasewall_tuned",
+        "n_cells": 36
+      },
+      {
+        "best_q_value": 1.9198452288232053e-17,
+        "cells_q_lt_0_05": 36,
+        "fraction_cells_median_delta_lt0": 0.0,
+        "mean_loss_rate": 0.920277777777778,
+        "mean_win_rate": 0.0797222222222222,
+        "median_of_cell_median_delta": 58.69544875079048,
+        "method": "pop4x",
+        "n_cells": 36
+      }
+    ],
+    "n_cells": 144,
+    "n_methods": 4,
+    "n_q_lt_0_05": 105
+  },
+  "tuning": {
+    "selected_params": {
+      "phasewall_plus_lr_tuned": 0.1,
+      "phasewall_tuned": 0.4
+    }
+  },
+  "warnings": [
+    "LR-Adapt comparator is a transparent proxy implementation, not exact Nomura reproduction.",
+    "Findings are run-scoped; treat smoke runs as pipeline-validation evidence, not final inferential evidence."
+  ]
+}
