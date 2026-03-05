@@ -32,6 +32,7 @@ Boundary conditions:
 - `lr_adapt_proxy` is a transparent repository-local proxy algorithm.
 - It is not claimed as an exact reproduction of Nomura et al. or any external LR-Adapt implementation.
 - Claims in this document are scoped to repository artifacts and run configurations cited here.
+- No universal optimizer claim is made; current evidence is mechanism-level and benchmark-scoped.
 
 ---
 
@@ -258,6 +259,36 @@ Worst median-delta variant (`sigma_clamp_0.2_5.0`):
 
 Observation:
 - Sweep indicates meaningful sensitivity to clamp choices.
+
+### 8.4 Latest Validated Mechanism Sweep (Hybrid Telemetry)
+Run: `20260305T111933Z-awf-mechanism`  
+Artifacts:
+- `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_runs_long.csv`
+- `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_hypothesis_checks.json`
+
+Run completion:
+- `108000 / 108000` runs with `status = ok`
+- Methods: `vanilla_cma`, `lr_adapt_proxy`
+- Variants: `15` (12 geometry + 3 threshold-control)
+
+Pre-registered hypothesis status:
+- `P1`: not globally supported
+- `P2`: supported (not falsified)
+- `P3`: supported
+
+P3 model evidence:
+- `delta_aic = 1872.7474`
+- `delta_bic = 1837.1605`
+- `proxy_fraction_at_floor p-value = 2.9167e-92`
+- `n_rows_modeled = 54000`
+
+Interpretation docs for this run:
+- `docs/exporatory/AWF_MECHANISM_INTERPRETATION_MEMO_2026-03-05.md`
+- `docs/exporatory/AWF_MECHANISM_ONE_PAGER_2026-03-05.md`
+- `docs/exporatory/PHENOMENON.md`
+
+Note:
+- Any threshold/gate values should be treated as provisional pending finalized write-up and replication.
 ---
 ## 9. Diagnostics and Observability
 `lr_adapt_proxy` emits per-generation diagnostics in return payload:
@@ -267,10 +298,27 @@ Observation:
 - `proxy_ema_snr`
 - `proxy_sigma_factor`
 - `proxy_sigma`
+- `proxy_current_best`
+- `proxy_best_so_far`
 
 Run-level persisted fields include:
 - `proxy_sigma_factor_last`
 - `proxy_ema_snr_last`
+- `proxy_time_to_first_floor_gen`
+- `proxy_fraction_at_floor`
+- `proxy_n_floor_entries`
+- `proxy_n_floor_exits`
+- `proxy_n_down_steps`
+- `proxy_n_up_steps`
+- `proxy_n_neutral_steps`
+- `proxy_sigma_min_seen`
+- `proxy_sigma_max_seen`
+- `proxy_trace_written`
+- `proxy_trace_relpath`
+
+Per-generation trace artifacts:
+- Sidecar CSV traces are written under `results/proxy_traces/` when tracing is enabled.
+- Latest validated hybrid run wrote `21600` proxy trace files.
 
 Use:
 - Track whether proxy is mostly in shrink (`factor < 1`), expand (`factor > 1`), or neutral mode.
@@ -284,6 +332,7 @@ Latest validated run IDs in this session:
 - Eval-only: `20260305T085022Z-2f5b6f1b`
 - High-rigor: `20260305T085129Z-cac939ce`
 - Sensitivity: `20260305T085252Z-1a889aa0`
+- AWF mechanism sweep: `20260305T111933Z-awf-mechanism`
 
 1. High-rigor run (includes pairwise by wrapper):
 ```bash
@@ -305,7 +354,23 @@ bash scripts/run_lr_proxy_sensitivity.sh --workers 8
 bash scripts/run_smoke_pipeline.sh --workers 8
 ```
 
-5. Artifact verification (example run IDs from current outputs):
+5. AWF mechanism sweep:
+```bash
+python3 -m experiments.sensitivity \
+  --config experiments/config/awf_mechanism_proof.yaml \
+  --outdir artifacts/runs/awf-mechanism/<RUN_ID>/results
+```
+
+6. AWF post-analysis:
+```bash
+python3 -m experiments.awf_analysis \
+  --runs artifacts/runs/awf-mechanism/<RUN_ID>/results/sensitivity_runs_long.csv \
+  --cell-stats artifacts/runs/awf-mechanism/<RUN_ID>/results/sensitivity_cell_stats.csv \
+  --summary artifacts/runs/awf-mechanism/<RUN_ID>/results/sensitivity_summary.csv \
+  --outdir artifacts/runs/awf-mechanism/<RUN_ID>/results
+```
+
+7. Artifact verification (example run IDs from current outputs):
 ```bash
 python3 scripts/verify_rerun_artifacts.py \
   --results-dir artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results \

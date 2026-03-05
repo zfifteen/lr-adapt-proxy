@@ -5,7 +5,7 @@ We ran the full mechanism-proof experiment to test whether `lr_adapt_proxy` wins
 
 The new telemetry confirms that some variants spend a very large part of the run clamped at the floor, while others stay adaptive much longer. That shift changes outcomes in predictable ways for some problem families, especially low-dimensional Sphere and Rosenbrock. But high projected AWF by itself is not a guaranteed improvement rule. Some high-AWF variants were excellent, and some were clearly bad.
 
-So the mechanism claim has moved from "plausible" to "partially proven": floor dynamics are a major driver, but the practical decision boundary is a two-part regime condition, not a one-number threshold.
+So the mechanism claim has moved from "plausible" to "partially proven": the primary switch is floor depth, and occupancy metrics are the downstream readout of that switch.
 
 ## Executive Summary
 1. The experiment executed successfully at full scale: **108,000/108,000 runs completed with status `ok`**.
@@ -15,7 +15,7 @@ So the mechanism claim has moved from "plausible" to "partially proven": floor d
    - **P2: supported** (and not falsified under the defined check).
    - **P3: supported strongly**.
 4. The strongest practical pattern was not "increase AWF at all costs." It was "avoid aggressive floor regime (`r_min=0.20`), and prefer low floor (`r_min=0.05`) with moderate down-step (`k_down` roughly 0.90 to 0.95)."
-5. This materially changes next-step design: we should optimize for **realized floor occupancy and floor-entry timing**, not just static threshold tuning or projected AWF alone.
+5. This materially changes next-step design: we should treat **floor depth as the mechanism lever** and **regime occupancy metrics as the measurement layer**, not rely on projected AWF alone.
 
 ## 1) What Was Run
 - Sweep config: `awf_mechanism_proof.yaml`.
@@ -132,16 +132,17 @@ Interpretation: high AWF was not sufficient by itself. Variant structure still m
 ## 4) Human-Readable Interpretation of the Mechanism
 The data now supports a refined mechanism statement:
 
-1. **Yes, floor dominance is real and consequential.**
-   - We can directly measure when runs hit floor, how long they stay there, and how often they re-enter.
+1. **The mechanism is a floor-depth phase transition.**
+   - Crossing from low floor depth (`r_min` near `0.05`) to higher floor depth (`r_min` near `0.10` or `0.20`) changes outcome class, not just outcome magnitude.
+   - In this run family, low-floor variants can recover target cells across very different shrink tempos, while higher-floor variants fail despite some high projected AWF values.
 
 2. **No, "high AWF" is not a universal good.**
    - Some high-AWF variants improved target cells dramatically.
    - Other high-AWF variants were poor overall.
 
-3. **The practical control variable is realized regime occupancy, not one static knob.**
+3. **Regime occupancy is the measurement framework, not the primary mechanism label.**
    - `r_min`, `k_down`, and threshold settings jointly determine how often the policy fires down, up, or neutral.
-   - That interaction creates different floor-occupancy regimes even when projected AWF is similar.
+   - Occupancy metrics (`time_to_first_floor`, `fraction_at_floor`, entries/exits) quantify the downstream state after the phase switch, and they remain critical for diagnosis.
 
 4. **The mechanism discovered through this adapter design is still useful even if discovery was accidental.**
    - This is now an instrumented, testable regime concept, not just a post-hoc story.
@@ -150,7 +151,7 @@ The data now supports a refined mechanism statement:
 For CMA-ES practitioners, this sweep suggests a concrete shift in emphasis:
 
 - Stop treating proxy adaptation quality as mostly an endpoint-SNR problem.
-- Treat it as a **regime management problem** over the full run horizon.
+- Treat it as a **phase-switch plus regime-measurement problem** over the full run horizon.
 - Optimize for:
   - later and less frequent floor lock-in,
   - controlled down-step pressure,
@@ -165,9 +166,9 @@ In this run family, the sweet spot leaned toward lower `r_min` (`0.05`) and mode
 4. This result is scoped to this benchmark matrix and budget (`1000` evals, popsize `10`, 100 generations planned).
 
 ## 7) Recommended Next-Step Protocol
-1. Run a focused causal follow-up around the successful regime band:
-   - `r_min in {0.04, 0.05, 0.06, 0.08}`
-   - `k_down in {0.90, 0.92, 0.94, 0.95}`
+1. Run a focused causal follow-up with explicit confound control:
+   - Arm A (floor-depth phase test): `r_min in {0.04, 0.05, 0.06, 0.08}` with fixed `k_down = 0.93`.
+   - Arm B (threshold test inside low-floor phase): fix `r_min = 0.05` and `k_down = 0.93`, then vary threshold pairs.
 2. Add analysis centered on realized occupancy trajectories:
    - first-floor generation distribution,
    - re-entry rates,
@@ -189,4 +190,4 @@ All statistics in this memo were computed from the following artifacts:
 - `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_hypothesis_checks.json`
 
 ## 9) Bottom Line
-This was not garbage noise. The phenomenon is real, measurable, and decision-relevant. The key correction is that the mechanism is **"floor-occupancy regime control"**, not simply **"maximize AWF"**. That is the actionable model to carry into the next CMA-ES experiment phase.
+This was not garbage noise. The phenomenon is real, measurable, and decision-relevant. The key correction is that the mechanism is **a floor-depth phase transition**, while **regime occupancy is the telemetry framework that reveals it**. That is the actionable model to carry into the next CMA-ES experiment phase.
