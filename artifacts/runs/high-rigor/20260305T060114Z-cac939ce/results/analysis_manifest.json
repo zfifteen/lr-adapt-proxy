@@ -1,0 +1,23 @@
+{
+  "created_at_utc": "2026-03-05T06:02:29.022886+00:00",
+  "files": {
+    "cell_stats_csv": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/cell_stats.csv",
+    "figure_method_delta": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/figures/method_median_delta_bar.png",
+    "figure_method_q_count": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/figures/method_q_lt_005_count_bar.png",
+    "figure_method_win_rate": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/figures/method_win_rate_bar.png",
+    "findings_pairwise_md": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/findings_pairwise.md",
+    "method_aggregate_csv": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/method_aggregate.csv",
+    "pairwise_lr_vs_vanilla_csv": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/pairwise_lr_vs_vanilla.csv",
+    "pairwise_lr_vs_vanilla_json": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/pairwise_lr_vs_vanilla.json"
+  },
+  "manifest_json": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/manifest.json",
+  "phase_filter": "eval",
+  "run_id": "20260305T060114Z-cac939ce",
+  "runs_csv": "artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/runs_long.csv",
+  "summary": {
+    "n_cell_rows": 72,
+    "n_methods": 2,
+    "n_significant_q_lt_005": 71
+  },
+  "updated_at_utc": "2026-03-05T06:02:30.428023+00:00"
+}

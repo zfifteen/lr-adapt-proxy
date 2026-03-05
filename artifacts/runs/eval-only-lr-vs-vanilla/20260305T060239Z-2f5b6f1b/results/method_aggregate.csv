@@ -1,0 +1,2 @@
+method,n_cells,median_of_cell_median_delta,mean_win_rate,mean_loss_rate,fraction_cells_median_delta_lt0,cells_q_lt_0_05,best_q_value
+lr_adapt_proxy,36,-18.872088786790762,0.505,0.495,0.5833333333333334,35,2.1941088329408057e-17
