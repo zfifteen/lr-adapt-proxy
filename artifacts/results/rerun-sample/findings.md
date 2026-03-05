@@ -1,9 +1,9 @@
 # Run Findings
 
 ## Run Identity
-- Run ID: `20260305T061125Z-b47c25f9`
+- Run ID: `20260305T085008Z-b47c25f9`
 - Scope: `smoke_rerun_pipeline`
-- Created (UTC): `2026-03-05T06:11:29.089012+00:00`
+- Created (UTC): `2026-03-05T08:50:12.247438+00:00`
 - Config: `experiments/config/smoke.yaml`
 - Config Hash: `b47c25f9944f2d02fc86ab77b6038e0f43216e2173add68f66cf34384a57dcdc`
 - Manifest: `artifacts/results/rerun-sample/manifest.json`

@@ -1,0 +1,36 @@
+{
+  "config_hash": "2f5b6f1bee55d4dbebae8fc5b2daca2c5a0d8a220f41b9fa2841f0542ecef6b2",
+  "config_path": "experiments/config/eval_only_lr_vs_vanilla.yaml",
+  "counts": {
+    "methods": [
+      "vanilla_cma",
+      "lr_adapt_proxy"
+    ],
+    "status_by_phase": [
+      {
+        "count": 7200,
+        "phase": "eval",
+        "status": "ok"
+      }
+    ],
+    "total_runs": 7200
+  },
+  "created_at_utc": "2026-03-05T08:50:23.676149+00:00",
+  "files": {
+    "manifest_json": "artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/results/manifest.json",
+    "runs_long_csv": "artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/results/runs_long.csv",
+    "selected_params_json": "artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/results/selected_params.json",
+    "tuning_summary_csv": "artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/results/tuning_summary.csv"
+  },
+  "git_commit": "730a75a",
+  "notes": {
+    "eval_only": "No tuning stage executed in eval-only mode.",
+    "lr_adapt_proxy": "Proxy implementation for transparency; not exact Nomura reproduction."
+  },
+  "pipeline_mode": "eval_only",
+  "run_id": "20260305T085022Z-2f5b6f1b",
+  "run_root": "artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/results",
+  "run_scope": "eval_only_lr_vs_vanilla",
+  "selected_params": {},
+  "workers": 8
+}
