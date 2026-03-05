@@ -14,6 +14,12 @@ Canonical algorithm specification:
 ### LR-Adapt proxy caveat
 `lr_adapt_proxy` is an explicit repository-local proxy, not an exact reproduction of Nomura et al. or the historical bundled report implementation. All outputs retain `proxy` naming to avoid overclaiming.
 
+Canonical implementation architecture:
+- Policy decision logic: `experiments/adaptation/policies/lr_proxy.py` (`LRProxyPolicy.step`).
+- Optimizer mutation boundary: `experiments/adaptation/clients/pycma_sigma.py` (`apply_sigma_action`).
+- Legacy compatibility shim only: `experiments/lr_adapt_proxy.py`.
+- `proxy_*` diagnostic key naming is intentionally retained as v1 compatibility debt for schema continuity.
+
 Proxy sigma update (per generation):
 1. `signal = max(previous_best - current_best, 0)`
 2. `noise = 1.4826 * MAD(fitness_generation) + eps`

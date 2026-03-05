@@ -14,10 +14,12 @@ Derivation and design rationale: the goal is not to invent a brand-new optimizer
 Relation to prior work: the proxy is inspired by the signal-to-noise adaptation philosophy in Nomura, Akimoto and Ono's LRA-CMA-ES (arXiv:2304.03473; extended arXiv:2401.15876), but this implementation is deliberately lightweight and external. It operates after pycma `tell` and only mutates `es.sigma`.
 
 Current implementation architecture:
+- Canonical implementation is policy + adapter: policy decides, adapter mutates optimizer state.
 - Policy logic is implemented in `experiments/adaptation/policies/lr_proxy.py` (`LRProxyPolicy`).
 - Action application is implemented in `experiments/adaptation/clients/pycma_sigma.py` (`apply_sigma_action`).
-- `experiments/lr_adapt_proxy.py` is retained as a compatibility shim delegating to the policy/adaptor path.
+- `experiments/lr_adapt_proxy.py` is retained as a compatibility shim delegating to the policy/adapter path.
 - Runner integration in `experiments/methods.py` is context/action-based.
+- `proxy_*` diagnostics naming is intentionally retained as v1 compatibility debt for schema continuity.
 
 ## 1. Scope and Claim Boundaries
 This document is the canonical technical specification for the repository-local `lr_adapt_proxy` algorithm and associated pipeline contracts.
@@ -73,20 +75,18 @@ Where:
 - `sigma0 = initial_sigma`
 
 ## 4. Implementation Snippet
-Actual implementation excerpt from `experiments/lr_adapt_proxy.py`:
+Canonical policy rule excerpt from `experiments/adaptation/policies/lr_proxy.py`:
 
 ```python
-from dataclasses import dataclass
-
-import numpy as np
-
-
-@dataclass
-class LRProxyState:
-    initial_sigma: float
-    ema_snr: float = 0.0
-    best_so_far: float | None = None
-
+@dataclass(frozen=True)
+class LRProxyParams:
+    ema_alpha: float
+    snr_up_threshold: float
+    snr_down_threshold: float
+    sigma_up_factor: float
+    sigma_down_factor: float
+    sigma_min_ratio: float
+    sigma_max_ratio: float
 
 def robust_spread(values: np.ndarray) -> float:
     med = np.median(values)
@@ -94,40 +94,46 @@ def robust_spread(values: np.ndarray) -> float:
     return float(1.4826 * mad + 1e-12)
 
 
-def apply_lr_adapt_proxy(
-    es,
-    fitness: np.ndarray,
-    state: LRProxyState,
-    params: dict,
-) -> dict[str, float]:
-    current_best = float(np.min(fitness))
-    prev_best = current_best if state.best_so_far is None else state.best_so_far
-    signal = max(prev_best - current_best, 0.0)
-    noise = robust_spread(fitness)
-    snr = signal / noise
+class LRProxyPolicy:
+    def step(self, context: AdaptationContext) -> AdaptationStep:
+        fitness = np.asarray(context.fitness, dtype=float)
+        current_best = float(np.min(fitness))
+        prev_best = current_best if self.best_so_far is None else float(self.best_so_far)
 
-    alpha = float(params["ema_alpha"])
-    state.ema_snr = alpha * snr + (1.0 - alpha) * state.ema_snr
+        signal = max(prev_best - current_best, 0.0)
+        noise = robust_spread(fitness)
+        snr = signal / noise
 
-    factor = 1.0
-    if state.ema_snr < float(params["snr_down_threshold"]):
-        factor = float(params["sigma_down_factor"])
-    elif state.ema_snr > float(params["snr_up_threshold"]):
-        factor = float(params["sigma_up_factor"])
+        alpha = self.params.ema_alpha
+        self.ema_snr = alpha * snr + (1.0 - alpha) * self.ema_snr
 
-    sigma_min = state.initial_sigma * float(params["sigma_min_ratio"])
-    sigma_max = state.initial_sigma * float(params["sigma_max_ratio"])
-    es.sigma = float(np.clip(es.sigma * factor, sigma_min, sigma_max))
-    state.best_so_far = min(prev_best, current_best)
+        factor = 1.0
+        if self.ema_snr < self.params.snr_down_threshold:
+            factor = self.params.sigma_down_factor
+        elif self.ema_snr > self.params.snr_up_threshold:
+            factor = self.params.sigma_up_factor
+        ...
+        return AdaptationStep(...)
+```
 
-    return {
-        "proxy_signal": signal,
-        "proxy_noise": noise,
-        "proxy_snr": snr,
-        "proxy_ema_snr": state.ema_snr,
-        "proxy_sigma_factor": factor,
-        "proxy_sigma": float(es.sigma),
-    }
+Adapter application excerpt from `experiments/adaptation/clients/pycma_sigma.py`:
+
+```python
+def apply_sigma_action(es, action: AdaptationAction) -> float:
+    es.sigma = float(action.next_value)
+    return float(es.sigma)
+```
+
+Compatibility shim excerpt from `experiments/lr_adapt_proxy.py` (legacy interface retained):
+
+```python
+def apply_lr_adapt_proxy(es, fitness, state, params) -> dict[str, float]:
+    policy = LRProxyPolicy(...)
+    step = policy.step(AdaptationContext(...))
+    apply_sigma_action(es, step.action)
+    state.ema_snr = policy.ema_snr
+    state.best_so_far = policy.best_so_far
+    return step.diagnostics
 ```
 
 ## 5. Implementation Mapping
@@ -135,17 +141,13 @@ Code mapping for the equations and snippet above:
 
 | Spec Item | Implementation Location |
 |---|---|
-| State fields (`initial_sigma`, `ema_snr`, `best_so_far`) | `experiments/lr_adapt_proxy.py:8-12` |
-| Robust spread (`1.4826 * MAD + 1e-12`) | `experiments/lr_adapt_proxy.py:15-18` |
-| Current best / previous best | `experiments/lr_adapt_proxy.py:35-37` |
-| Signal / noise / SNR | `experiments/lr_adapt_proxy.py:37-39` |
-| EMA update | `experiments/lr_adapt_proxy.py:41-43` |
-| Threshold-based factor logic | `experiments/lr_adapt_proxy.py:44-48` |
-| Sigma clamp bounds and sigma assignment | `experiments/lr_adapt_proxy.py:50-53` |
-| Best-so-far monotone update | `experiments/lr_adapt_proxy.py:53` |
-| Returned diagnostics payload | `experiments/lr_adapt_proxy.py:55-62` |
-| Proxy invoked after `tell` | `experiments/methods.py:109-114` |
-| Per-run diagnostics persisted in output rows | `experiments/methods.py:126-128` |
+| Parameter object (`LRProxyParams`) | `experiments/adaptation/policies/lr_proxy.py:10-30` |
+| Robust spread (`1.4826 * MAD + 1e-12`) | `experiments/adaptation/policies/lr_proxy.py:33-36` |
+| Policy decision rule (`signal`, `noise`, `snr`, EMA, thresholds, clamp) | `experiments/adaptation/policies/lr_proxy.py:55-102` |
+| Optimizer mutation boundary (`es.sigma <- action.next_value`) | `experiments/adaptation/clients/pycma_sigma.py:6-8` |
+| Post-`tell` context/action invocation | `experiments/methods.py:117-130` |
+| Per-run diagnostics persisted in output rows | `experiments/methods.py:142-143` |
+| Compatibility shim delegation path | `experiments/lr_adapt_proxy.py:23-56` |
 
 ## 6. Parameter Semantics and Defaults
 Baseline parameter values are currently aligned in:
@@ -187,8 +189,8 @@ Edge cases:
 All numbers below are copied from tracked artifacts.
 
 ### 8.1 High-Rigor Matrix Result
-Run: `20260305T060114Z-cac939ce`  
-Artifact: `artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/method_aggregate.csv`
+Run: `20260305T085129Z-cac939ce`  
+Artifact: `artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/method_aggregate.csv`
 
 `lr_adapt_proxy` aggregate row:
 - `median_of_cell_median_delta = -18.87208878679076`
@@ -205,7 +207,7 @@ Sign convention for minimization comparisons:
 - Negative `median_delta_vs_vanilla` is better than vanilla.
 
 ### 8.2 Pairwise (Vanilla vs LR Proxy)
-Artifact: `artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/pairwise_lr_vs_vanilla.json`
+Artifact: `artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/pairwise_lr_vs_vanilla.json`
 
 Pairwise orientation:
 - `method_a = vanilla_cma`
@@ -224,8 +226,8 @@ Interpretation:
 - Under this protocol, `lr_adapt_proxy` outperforms vanilla in most cells with broad corrected significance.
 
 ### 8.3 Sensitivity Sweep Headline
-Run: `20260305T060340Z-1a889aa0`  
-Artifact: `artifacts/runs/lr-proxy-sensitivity/20260305T060340Z-1a889aa0/results/sensitivity_summary.csv`
+Run: `20260305T085252Z-1a889aa0`  
+Artifact: `artifacts/runs/lr-proxy-sensitivity/20260305T085252Z-1a889aa0/results/sensitivity_summary.csv`
 
 Rows in sweep summary: `9`
 
@@ -267,6 +269,12 @@ Use:
 ## 10. Reproducibility
 Minimal command set:
 
+Latest validated run IDs in this session:
+- Smoke: `20260305T085008Z-b47c25f9`
+- Eval-only: `20260305T085022Z-2f5b6f1b`
+- High-rigor: `20260305T085129Z-cac939ce`
+- Sensitivity: `20260305T085252Z-1a889aa0`
+
 1. High-rigor run (includes pairwise by wrapper):
 ```bash
 bash scripts/run_high_rigor_pipeline.sh --workers 8
@@ -290,15 +298,15 @@ bash scripts/run_smoke_pipeline.sh --workers 8
 5. Artifact verification (example run IDs from current outputs):
 ```bash
 python3 scripts/verify_rerun_artifacts.py \
-  --results-dir artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results \
-  --figdir artifacts/runs/high-rigor/20260305T060114Z-cac939ce/figures \
+  --results-dir artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results \
+  --figdir artifacts/runs/high-rigor/20260305T085129Z-cac939ce/figures \
   --config experiments/config/high_rigor.yaml \
   --mode full \
   --require-pairwise
 
 python3 scripts/verify_rerun_artifacts.py \
-  --results-dir artifacts/runs/eval-only-lr-vs-vanilla/20260305T060239Z-2f5b6f1b/results \
-  --figdir artifacts/runs/eval-only-lr-vs-vanilla/20260305T060239Z-2f5b6f1b/figures \
+  --results-dir artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/results \
+  --figdir artifacts/runs/eval-only-lr-vs-vanilla/20260305T085022Z-2f5b6f1b/figures \
   --config experiments/config/eval_only_lr_vs_vanilla.yaml \
   --mode eval_only \
   --require-pairwise

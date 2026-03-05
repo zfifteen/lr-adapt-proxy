@@ -22,7 +22,9 @@ Vanilla CMA-ES (`vanilla_cma`) uses pycma's internal adaptation path in `tell` (
 Current code path separation:
 - Policy (`LRProxyPolicy`) computes the decision and diagnostics.
 - Client adapter (`apply_sigma_action`) applies the returned `next_value` to `es.sigma`.
-- Compatibility shim is maintained for legacy callsites.
+- Compatibility shim is maintained for legacy callsites only.
+- This policy+adapter split is the canonical implementation path.
+- `proxy_*` diagnostics names are intentionally retained as v1 compatibility debt for schema continuity.
 
 No direct covariance-matrix equation is replaced by this proxy. The direct write is to `es.sigma`; covariance effects are indirect via subsequent sampling.
 
@@ -43,8 +45,8 @@ For generation fitness values `f` (minimization):
 
 `previous_best` is then updated to `min(previous_best, current_best)`.
 
-## Active Baseline Parameters (High-Rigor / Ablation)
-From `experiments/config/high_rigor.yaml` and `experiments/config/ablation_pwlr_vs_lr.yaml`:
+## Active Baseline Parameters (Current Config Set)
+From `experiments/config/high_rigor.yaml`, `experiments/config/eval_only_lr_vs_vanilla.yaml`, and `experiments/config/lr_proxy_sensitivity.yaml`:
 
 | Parameter | Value |
 |---|---:|
