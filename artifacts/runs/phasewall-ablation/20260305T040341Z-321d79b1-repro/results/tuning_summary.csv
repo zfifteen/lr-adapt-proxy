@@ -1,0 +1,3 @@
+method,phasewall_strength,n_pairs,median_delta_vs_vanilla,win_rate_vs_vanilla,loss_rate_vs_vanilla,selected,note
+lr_adapt_proxy,0.0,0,,,,True,eval_only_fixed_parameter
+phasewall_plus_lr_tuned,0.1,0,,,,True,eval_only_fixed_parameter

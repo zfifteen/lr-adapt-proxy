@@ -1,0 +1,11 @@
+method,phasewall_strength,n_pairs,median_delta_vs_vanilla,win_rate_vs_vanilla,loss_rate_vs_vanilla,selected
+phasewall_tuned,0.1,320,-0.001161554386387209,0.509375,0.490625,False
+phasewall_tuned,0.2,320,0.007778080821407976,0.478125,0.521875,False
+phasewall_tuned,0.4,320,-0.0022774818277858516,0.50625,0.49375,True
+phasewall_tuned,0.6,320,0.00031800552597506526,0.496875,0.503125,False
+phasewall_tuned,0.8,320,-0.0005966760807335492,0.5,0.5,False
+phasewall_plus_lr_tuned,0.1,320,0.04084512945500539,0.45625,0.54375,True
+phasewall_plus_lr_tuned,0.2,320,0.06447958793224826,0.45625,0.54375,False
+phasewall_plus_lr_tuned,0.4,320,0.08482669561425622,0.43125,0.56875,False
+phasewall_plus_lr_tuned,0.6,320,0.056485096451435096,0.4625,0.5375,False
+phasewall_plus_lr_tuned,0.8,320,0.06524951951614934,0.446875,0.553125,False
