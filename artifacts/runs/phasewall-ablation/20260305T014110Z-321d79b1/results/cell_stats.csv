@@ -1,0 +1,1 @@
+function,dimension,noise_sigma,method,n_pairs,vanilla_median,method_median,median_delta_vs_vanilla,win_rate_vs_vanilla,loss_rate_vs_vanilla,wilcoxon_p_two_sided,bh_fdr_q_value,ratio_median_vs_vanilla_non_primary

@@ -1,0 +1,38 @@
+experiment_name: smoke_rerun_pipeline
+matrix:
+  functions: [sphere, rosenbrock, rastrigin, ellipsoid_cond1e6]
+  dimensions: [10, 20, 40]
+  noise_sigmas: [0.0, 0.1, 0.2]
+methods:
+  - vanilla_cma
+  - lr_adapt_proxy
+  - pop4x
+  - phasewall_tuned
+  - phasewall_plus_lr_tuned
+budget:
+  evals_per_run: 200
+cma:
+  initial_sigma: 2.0
+  base_popsize: 10
+  verbose: -9
+phasewall:
+  s_candidates: [0.1, 0.2, 0.4, 0.6, 0.8]
+lr_adapt_proxy:
+  enabled: true
+  ema_alpha: 0.2
+  snr_up_threshold: 0.25
+  snr_down_threshold: 0.08
+  sigma_up_factor: 1.03
+  sigma_down_factor: 0.90
+  sigma_min_ratio: 0.10
+  sigma_max_ratio: 10.0
+tuning:
+  task_subset:
+    functions: [sphere, rosenbrock, rastrigin, ellipsoid_cond1e6]
+    dimensions: [10, 20]
+    noise_sigmas: [0.1]
+seeds:
+  tune: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  eval: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
+runtime:
+  parallel_workers: 8

@@ -1,0 +1,23 @@
+{
+  "created_at_utc": "2026-03-05T01:42:18.360623+00:00",
+  "files": {
+    "cell_stats_csv": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/cell_stats.csv",
+    "figure_method_delta": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/figures/method_median_delta_bar.png",
+    "figure_method_q_count": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/figures/method_q_lt_005_count_bar.png",
+    "figure_method_win_rate": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/figures/method_win_rate_bar.png",
+    "findings_ablation_md": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/findings_ablation.md",
+    "method_aggregate_csv": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/method_aggregate.csv",
+    "pairwise_pwlr_vs_lr_csv": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/pairwise_pwlr_vs_lr.csv",
+    "pairwise_pwlr_vs_lr_json": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/pairwise_pwlr_vs_lr.json"
+  },
+  "manifest_json": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/manifest.json",
+  "phase_filter": "eval",
+  "run_id": "20260305T014110Z-321d79b1",
+  "runs_csv": "artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results/runs_long.csv",
+  "summary": {
+    "n_cell_rows": 0,
+    "n_methods": 0,
+    "n_significant_q_lt_005": 0
+  },
+  "updated_at_utc": "2026-03-05T01:42:19.787723+00:00"
+}
