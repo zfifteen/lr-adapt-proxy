@@ -1,9 +1,8 @@
+![banner-lr-adapt-proxy.png](artifacts/readme/banner-lr-adapt-proxy.png)
+---
 # lr-adapt-proxy
 
-This README intentionally mirrors the canonical technical specification in `docs/analysis/lr_adapt_proxy_technical_spec.md`.
-
-
-## Reader Overview
+## Overview
 This project studies black-box optimization under noisy benchmark conditions, where an optimizer must improve objective values even when individual evaluations can be misleading. In this setting, CMA-ES can be viewed as an iterative search procedure: each generation proposes a batch of candidate solutions, evaluates them, and updates its internal search behavior based on the observed outcomes.
 
 One key control variable in CMA-ES is step size (`sigma`), which governs how far new candidates are sampled from the current search center. Larger `sigma` favors broader exploration, while smaller `sigma` favors local refinement. In noisy settings, deciding when to expand or contract this sampling radius can be difficult, because apparent progress can be either real signal or random fluctuation.
@@ -16,6 +15,8 @@ Derivation and design rationale: the goal is not to invent a brand-new optimizer
 
 Relation to prior work: the proxy is inspired by the signal-to-noise adaptation philosophy in Nomura, Akimoto and Ono's LRA-CMA-ES (arXiv:2304.03473; extended arXiv:2401.15876), but this implementation is deliberately lightweight and external. It operates after pycma `tell` and only mutates `es.sigma`.
 
+---
+
 ## 1. Scope and Claim Boundaries
 This document is the canonical technical specification for the repository-local `lr_adapt_proxy` algorithm and associated pipeline contracts.
 
@@ -23,6 +24,8 @@ Boundary conditions:
 - `lr_adapt_proxy` is a transparent repository-local proxy algorithm.
 - It is not claimed as an exact reproduction of Nomura et al. or any external LR-Adapt implementation.
 - Claims in this document are scoped to repository artifacts and run configurations cited here.
+
+---
 
 ## 2. Baseline Context (Vanilla CMA-ES vs Proxy Add-on)
 `vanilla_cma` uses pycma's standard `ask`/`tell` adaptation loop. In this repository, `lr_adapt_proxy` adds one post-`tell` control signal:
@@ -37,6 +40,8 @@ What changes:
 What does not directly change:
 - No direct replacement of covariance update equations.
 - Mean/covariance internal pycma updates still run through `tell`.
+
+---
 
 ## 3. Formal Definition (Math View of the Implemented Rule)
 For minimization, generation fitness vector `f_t`:
@@ -68,6 +73,8 @@ Where:
 - `r_min = sigma_min_ratio`
 - `r_max = sigma_max_ratio`
 - `sigma0 = initial_sigma`
+
+---
 
 ## 4. Implementation Snippet
 Actual implementation excerpt from `experiments/lr_adapt_proxy.py`:
@@ -126,7 +133,7 @@ def apply_lr_adapt_proxy(
         "proxy_sigma": float(es.sigma),
     }
 ```
-
+---
 ## 5. Implementation Mapping
 Code mapping for the equations and snippet above:
 
@@ -143,7 +150,7 @@ Code mapping for the equations and snippet above:
 | Returned diagnostics payload | `experiments/lr_adapt_proxy.py:55-62` |
 | Proxy invoked after `tell` | `experiments/methods.py:109-114` |
 | Per-run diagnostics persisted in output rows | `experiments/methods.py:126-128` |
-
+---
 ## 6. Parameter Semantics and Defaults
 Baseline parameter values are currently aligned in:
 - `experiments/config/high_rigor.yaml`
@@ -164,7 +171,7 @@ Range semantics:
 - `sigma_down_factor < 1` shrinks step size when low progress-to-noise.
 - `sigma_up_factor > 1` expands step size when high progress-to-noise.
 - Clamp ratios prevent unbounded shrink/expansion.
-
+---
 ## 7. Behavioral Invariants and Edge Cases
 Expected invariants:
 - `best_so_far` is monotone non-increasing in minimization.
@@ -179,7 +186,7 @@ Edge cases:
   - `signal = 0` by construction.
 - First generation:
   - `prev_best` initializes from current generation best.
-
+---
 ## 8. Empirical Evidence Summary
 All numbers below are copied from tracked artifacts.
 
@@ -243,7 +250,7 @@ Worst median-delta variant (`sigma_clamp_0.2_5.0`):
 
 Observation:
 - Sweep indicates meaningful sensitivity to clamp choices.
-
+---
 ## 9. Diagnostics and Observability
 `lr_adapt_proxy` emits per-generation diagnostics in return payload:
 - `proxy_signal`
@@ -260,7 +267,7 @@ Run-level persisted fields include:
 Use:
 - Track whether proxy is mostly in shrink (`factor < 1`), expand (`factor > 1`), or neutral mode.
 - Detect saturation behavior against sigma clamps.
-
+---
 ## 10. Reproducibility
 Minimal command set:
 
@@ -305,7 +312,7 @@ Pairwise artifacts produced by current wrappers:
 - `pairwise_lr_vs_vanilla.csv`
 - `pairwise_lr_vs_vanilla.json`
 - `findings_pairwise.md`
-
+---
 ## 11. Limitations and Open Questions
 Known limitations:
 - Proxy status: this is not an exact external LR-Adapt reproduction.
@@ -316,7 +323,7 @@ Open questions:
 - Which proxy components drive gains most strongly (threshold band vs clamp window vs factors)?
 - How does proxy behavior transfer beyond current function families and budget regime?
 - What additional diagnostics should be logged for generation-level causal analysis (not just final-generation snapshots)?
-
+---
 ## 12. Maintenance Note
 - `docs/analysis/lr_adapt_proxy_technical_spec.md` is the canonical algorithm and pipeline contract document.
 - `README.md` intentionally mirrors this document for discoverability.
