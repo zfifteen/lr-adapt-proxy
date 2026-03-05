@@ -1,0 +1,2 @@
+function,dimension,noise_sigma,method,n_pairs,vanilla_median,method_median,median_delta_vs_vanilla,win_rate_vs_vanilla,loss_rate_vs_vanilla,wilcoxon_p_two_sided,ratio_median_vs_vanilla_non_primary,bh_fdr_q_value,is_q_significant
+rosenbrock,40,0.0,lr_adapt_proxy,100,588.945718635892,520.5422275367914,-62.47905884580223,0.58,0.42,0.0559135789702011,0.8838543367671713,0.0559135789702011,False
