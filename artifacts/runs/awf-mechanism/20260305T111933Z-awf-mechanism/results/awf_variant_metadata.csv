@@ -1,0 +1,16 @@
+variant_id,variant_group,lr_sigma_down_factor,lr_sigma_min_ratio,planned_generations,n_floor_projected,awf_projected
+geom_k090_r005,geometry,0.9,0.05,100.0,29.0,0.29
+geom_k090_r010,geometry,0.9,0.1,100.0,22.0,0.22
+geom_k090_r020,geometry,0.9,0.2,100.0,16.0,0.16
+geom_k093_r005,geometry,0.93,0.05,100.0,42.0,0.42
+geom_k093_r010,geometry,0.93,0.1,100.0,32.0,0.32
+geom_k093_r020,geometry,0.93,0.2,100.0,23.0,0.23
+geom_k095_r005,geometry,0.95,0.05,100.0,59.0,0.59
+geom_k095_r010,geometry,0.95,0.1,100.0,45.0,0.45
+geom_k095_r020,geometry,0.95,0.2,100.0,32.0,0.32
+geom_k097_r005,geometry,0.97,0.05,100.0,99.0,0.99
+geom_k097_r010,geometry,0.97,0.1,100.0,76.0,0.76
+geom_k097_r020,geometry,0.97,0.2,100.0,53.0,0.53
+thctl_005_020,threshold_control,0.9,0.1,100.0,22.0,0.22
+thctl_012_030,threshold_control,0.9,0.1,100.0,22.0,0.22
+thctl_016_035,threshold_control,0.9,0.1,100.0,22.0,0.22

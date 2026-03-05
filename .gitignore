@@ -1,3 +1,5 @@
 .idea/
 
 .env
+
+artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/proxy_traces/

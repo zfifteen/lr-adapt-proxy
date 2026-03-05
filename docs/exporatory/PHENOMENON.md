@@ -257,7 +257,89 @@ That is a meaningful workflow change for both experimentation and publication fr
 - This document does not claim SNR-based adaptation is novel.
 - This document does not claim universal superiority of `lr_adapt_proxy`.
 - This document is scoped to the high-rigor matrix used here.
-- Causality for early floor timing remains unproven until per-generation telemetry is added.
+- In the original high-rigor run family, causality for early floor timing was unproven due to limited telemetry. Section 13 adds a follow-up run that partially closes that gap.
+
+## 13. Mechanism Sweep Update (March 5, 2026)
+This section adds results from a follow-up run that directly instrumented floor dynamics and executed the pre-registered AWF mechanism checks. It does not invalidate Sections 1 to 12. It extends them with new evidence from a different run family.
+
+### 13.1 Run scope and completion status
+- Experiment: `awf_mechanism_proof.yaml`
+- Artifact root: `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results`
+- Completed runs: `108000 / 108000` with status `ok`
+- Methods: `vanilla_cma`, `lr_adapt_proxy`
+- Variants: `15` total (`12` geometry variants + `3` threshold-control variants)
+- Matrix and budget: same 4x3x3 matrix, `1000` evals/run, `100` planned generations
+
+### 13.2 Telemetry closure
+The follow-up run closes the key instrumentation gap that existed in Sections 1 to 12:
+
+- Run-level floor metrics are now available for proxy runs:
+  - `proxy_time_to_first_floor_gen`
+  - `proxy_fraction_at_floor`
+  - floor entry/exit counts and step-direction counts
+- Hybrid per-generation traces were captured exactly as designed:
+  - traced proxy runs: `21600`
+  - target-cell traces (`sphere 10/20`, `rosenbrock 10/20`): `18000`
+  - deterministic seed sample traces (`seed % 10 == 0`, non-target cells): `3600`
+  - unexpected traces: `0`
+  - missed target traces: `0`
+
+### 13.3 Hypothesis check outcomes
+From `awf_hypothesis_checks.json`:
+
+- **P1** (`>=9/12` target-cell improvement for each high-AWF geometry variant): **not globally supported**
+- **P2** (ellipsoid d40 should become less negative vs geometry baseline): **supported**
+- **P3** (floor-time features add predictive power beyond endpoint SNR): **supported strongly**
+
+P3 details:
+- `delta_aic = 1872.7474`
+- `delta_bic = 1837.1605`
+- `proxy_fraction_at_floor p-value = 2.9167e-92`
+- modeled rows = `54000`
+
+Interpretation:
+- Floor dynamics are not a weak side signal. They contribute substantial explanatory information beyond endpoint SNR.
+
+### 13.4 What changed in practical interpretation
+The original working model was:
+- short adaptive window may explain mixed outcomes.
+
+The updated model is more precise:
+- **realized floor-occupancy regime** is the key operational state variable.
+- projected AWF helps forecast floor timing/occupancy, but AWF alone is not sufficient to predict net performance.
+
+Concrete examples from this sweep:
+- Best-performing variants used lower floor ratio (`r_min = 0.05`) with moderate shrink (`k_down` around `0.90` to `0.95`):
+  - `geom_k093_r005`: median cell delta `-44.341...`, mean win rate `0.603...`
+  - `geom_k095_r005`: median cell delta `-42.235...`, mean win rate `0.588...`
+- Aggressive floor ratio (`r_min = 0.20`) remained damaging across geometry arm:
+  - e.g., `geom_k090_r020`: median cell delta `+5.806...`, mean win rate `0.298...`
+
+### 13.5 Why P1 failed globally but mechanism still stands
+P1 was intentionally strict and variant-wise. High projected AWF variants split into two groups:
+
+- pass cases (`12/12` target cells improved): `geom_k095_r005`, `geom_k097_r005`
+- fail cases (`5/12`, `7/12`, `0/12`): `geom_k095_r010`, `geom_k097_r010`, `geom_k097_r020`
+
+This is important evidence against an oversimplified claim like:
+- "higher AWF always improves target losses."
+
+What remains supported:
+- floor timing and occupancy matter strongly,
+- but behavior depends on joint regime geometry (`k_down`, `r_min`) and policy firing dynamics (down/up/neutral balance), not one scalar alone.
+
+### 13.6 Updated decision guidance
+Given this run:
+
+1. Avoid high floor ratio (`r_min = 0.20`) under this benchmark budget unless there is a strong cell-specific reason.
+2. Prefer tuning around lower floor ratio (`r_min = 0.05`) and moderate shrink (`k_down` roughly `0.90` to `0.95`) as the next search band.
+3. Evaluate candidate settings using realized floor metrics (`time_to_first_floor`, `fraction_at_floor`, floor entry/exit behavior), not endpoint SNR alone.
+
+### 13.7 Scope note
+Sections 1 to 12 remain useful as mechanism framing. This section updates the evidence status:
+
+- early-floor timing is now directly measurable in this repository pipeline,
+- the mechanism is **partially proven and bounded**, not merely speculative.
 
 ## Source Notes (Repo-relative)
 R1. `experiments/config/high_rigor.yaml`
@@ -275,6 +357,24 @@ R6. `artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/lr_proxy_cell_b
 R7. `artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/runs_long.csv`
 
 R8. `README.md`
+
+R9. `experiments/config/awf_mechanism_proof.yaml`
+
+R10. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_manifest.json`
+
+R11. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_runs_long.csv`
+
+R12. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_cell_stats.csv`
+
+R13. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_summary.csv`
+
+R14. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_variant_metadata.csv`
+
+R15. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_floor_summary.csv`
+
+R16. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_target_cell_deltas.csv`
+
+R17. `artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_hypothesis_checks.json`
 
 ## Appendix A: Reproducibility Commands
 Run from repository root.

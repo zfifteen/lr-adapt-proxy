@@ -1,0 +1,15 @@
+{
+  "config_hash": "5e09dee8dbd5b5e4b6f0ff4618cc241f8ed0bd77caa0d501562108f8fab0919b",
+  "config_path": "/Users/velocityworks/IdeaProjects/lr-adapt-proxy/experiments/config/awf_mechanism_proof.yaml",
+  "created_at_utc": "2026-03-05T11:19:34.484588+00:00",
+  "files": {
+    "awf_variant_metadata_csv": "/Users/velocityworks/IdeaProjects/lr-adapt-proxy/artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/awf_variant_metadata.csv",
+    "findings_sensitivity_md": "/Users/velocityworks/IdeaProjects/lr-adapt-proxy/artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/findings_sensitivity.md",
+    "sensitivity_cell_stats_csv": "/Users/velocityworks/IdeaProjects/lr-adapt-proxy/artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_cell_stats.csv",
+    "sensitivity_runs_long_csv": "/Users/velocityworks/IdeaProjects/lr-adapt-proxy/artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_runs_long.csv",
+    "sensitivity_summary_csv": "/Users/velocityworks/IdeaProjects/lr-adapt-proxy/artifacts/runs/awf-mechanism/20260305T111933Z-awf-mechanism/results/sensitivity_summary.csv"
+  },
+  "n_variants": 15,
+  "run_id": "20260305T111934Z-5e09dee8",
+  "workers": 8
+}

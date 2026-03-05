@@ -1,0 +1,95 @@
+{
+  "baseline_variant": "geom_k090_r010",
+  "overall": {
+    "p1_supported": false,
+    "p2_falsified": false,
+    "p2_supported": true,
+    "p3_supported": true
+  },
+  "p1": {
+    "by_variant": [
+      {
+        "improved_cells": 12,
+        "passes": true,
+        "total_cells": 12,
+        "variant_id": "geom_k095_r005"
+      },
+      {
+        "improved_cells": 5,
+        "passes": false,
+        "total_cells": 12,
+        "variant_id": "geom_k095_r010"
+      },
+      {
+        "improved_cells": 12,
+        "passes": true,
+        "total_cells": 12,
+        "variant_id": "geom_k097_r005"
+      },
+      {
+        "improved_cells": 7,
+        "passes": false,
+        "total_cells": 12,
+        "variant_id": "geom_k097_r010"
+      },
+      {
+        "improved_cells": 0,
+        "passes": false,
+        "total_cells": 12,
+        "variant_id": "geom_k097_r020"
+      }
+    ],
+    "criterion": ">=9/12 target cells improved vs geometry baseline for each high-AWF geometry variant",
+    "supported": false
+  },
+  "p2": {
+    "by_variant": [
+      {
+        "falsified": false,
+        "less_negative_cells": 3,
+        "passes": true,
+        "total_cells": 3,
+        "variant_id": "geom_k095_r005"
+      },
+      {
+        "falsified": false,
+        "less_negative_cells": 3,
+        "passes": true,
+        "total_cells": 3,
+        "variant_id": "geom_k095_r010"
+      },
+      {
+        "falsified": false,
+        "less_negative_cells": 3,
+        "passes": true,
+        "total_cells": 3,
+        "variant_id": "geom_k097_r005"
+      },
+      {
+        "falsified": false,
+        "less_negative_cells": 3,
+        "passes": true,
+        "total_cells": 3,
+        "variant_id": "geom_k097_r010"
+      },
+      {
+        "falsified": false,
+        "less_negative_cells": 3,
+        "passes": true,
+        "total_cells": 3,
+        "variant_id": "geom_k097_r020"
+      }
+    ],
+    "criterion": ">=2/3 ellipsoid d40 cells less-negative vs geometry baseline for each high-AWF geometry variant",
+    "falsified": false,
+    "supported": true
+  },
+  "p3": {
+    "criterion": "Model B improves AIC/BIC over Model A and proxy_fraction_at_floor is significant",
+    "delta_aic": 1872.7474226062623,
+    "delta_bic": 1837.1604653040704,
+    "n_rows_modeled": 54000,
+    "proxy_fraction_at_floor_pvalue": 2.9167186740280063e-92,
+    "supported": true
+  }
+}
