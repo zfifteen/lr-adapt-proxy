@@ -1,0 +1,14 @@
+{
+  "config_hash": "1a889aa04c38602693feb2a019fe14482311f8ce25a90c7e48085b6f41c338d5",
+  "config_path": "experiments/config/lr_proxy_sensitivity.yaml",
+  "created_at_utc": "2026-03-05T04:40:47.672047+00:00",
+  "files": {
+    "findings_sensitivity_md": "artifacts/runs/lr-proxy-sensitivity/20260305T044046Z-1a889aa0-repro2/results/findings_sensitivity.md",
+    "sensitivity_cell_stats_csv": "artifacts/runs/lr-proxy-sensitivity/20260305T044046Z-1a889aa0-repro2/results/sensitivity_cell_stats.csv",
+    "sensitivity_runs_long_csv": "artifacts/runs/lr-proxy-sensitivity/20260305T044046Z-1a889aa0-repro2/results/sensitivity_runs_long.csv",
+    "sensitivity_summary_csv": "artifacts/runs/lr-proxy-sensitivity/20260305T044046Z-1a889aa0-repro2/results/sensitivity_summary.csv"
+  },
+  "n_variants": 9,
+  "run_id": "20260305T044046Z-1a889aa0-repro2",
+  "workers": 8
+}
