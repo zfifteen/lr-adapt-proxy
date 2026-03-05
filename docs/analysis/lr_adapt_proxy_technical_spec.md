@@ -5,26 +5,24 @@ This project studies black-box optimization under noisy benchmark conditions, wh
 
 One key control variable in CMA-ES is step size (`sigma`), which governs how far new candidates are sampled from the current search center. Larger `sigma` favors broader exploration, while smaller `sigma` favors local refinement. In noisy settings, deciding when to expand or contract this sampling radius can be difficult, because apparent progress can be either real signal or random fluctuation.
 
-`lr_adapt_proxy` was introduced in this repository as a practical, repository-local control layer that adjusts `sigma` using observed progress relative to observed noise. At a high level, each generation computes a progress-to-noise ratio (SNR), smooths that value over time with EMA (exponential moving average), and then nudges `sigma` up or down within configured bounds. This is intended to make step-size behavior more responsive to empirical search conditions without replacing the optimizer’s core update loop.
+`lr_adapt_proxy` in this repository is a practical, repository-local control layer that adjusts `sigma` using observed progress relative to observed noise. At a high level, each generation computes a progress-to-noise ratio (SNR), smooths that value over time with EMA (exponential moving average), and then nudges `sigma` up or down within configured bounds. This is intended to make step-size behavior more responsive to empirical search conditions without replacing the optimizer's core update loop.
 
 This algorithm is intentionally labeled a proxy: it is not presented as an exact reproduction of external LR-Adapt algorithms, and it augments pycma behavior rather than replacing covariance adaptation internals.
 
-**Derivation and design rationale.** The starting point was never to invent a brand-new optimizer, but rather to add a clearer, more noise-aware control loop around the step-size parameter. The core intuition — that step size should respond dynamically to observed search progress versus noise — already exists in various forms within CMA-ES literature (Cumulative Step-size Adaptation via evolution paths, population-size adaptation in PSA-CMA-ES, and recent learning-rate adaptation mechanisms). The engineering work here was to choose a compact, fully auditable signal pathway: use the observed generation-level best improvement as signal, estimate noise via the robust MAD of the current population’s fitness values, apply EMA smoothing, trigger bounded multiplicative adjustments via simple thresholds, and tie clamps to the initial sigma. The concrete combination of (fitness-space best-over-MAD SNR, asymmetric factors with hysteresis, sigma0-relative clamps, post-`tell` wrapper, and rich diagnostics payload) constitutes the local design contribution of this codebase.
+Derivation and design rationale: the goal is not to invent a brand-new optimizer, but to add a clear, auditable, noise-aware control loop around step size. The mechanism uses generation-level best improvement as signal, robust MAD of current-generation fitness as noise estimate, EMA smoothing, thresholded multiplicative updates, and clamp bounds relative to initial sigma.
 
-Generalization is plausible because the mechanism depends only on information that most evolutionary-search loops already expose: per-generation fitness values, current step size, and running best objective. No internal geometry, Fisher metrics, or domain-specific gradients are required. Technical portability is therefore straightforward (the rule is easy to port); empirical portability across problem families, budgets, noise models, and ES implementations remains an explicit validation question that this document addresses through repository artifacts.
-
-**Relation to Prior Work.** The proxy is inspired by the signal-to-noise adaptation philosophy in Nomura, Akimoto & Ono’s LRA-CMA-ES (arXiv:2304.03473, GECCO 2023 Best Paper Nomination; extended arXiv:2401.15876 / ACM TELO 2025), but implements a distinctly lighter, external, fitness-only control loop that operates *after* pycma’s `tell` and touches only `es.sigma`. It does not modify internal learning rates η_m or η_Σ, nor does it use Fisher-invariant coordinates. This keeps the implementation transparent, drop-in, and fully compatible with any existing pycma pipeline while still delivering strong empirical gains on noisy benchmarks.
+Relation to prior work: the proxy is inspired by the signal-to-noise adaptation philosophy in Nomura, Akimoto and Ono's LRA-CMA-ES (arXiv:2304.03473; extended arXiv:2401.15876), but this implementation is deliberately lightweight and external. It operates after pycma `tell` and only mutates `es.sigma`.
 
 ## 1. Scope and Claim Boundaries
-This document is the canonical technical specification for the repository-local `lr_adapt_proxy` algorithm used in this project’s pycma benchmark pipeline.
+This document is the canonical technical specification for the repository-local `lr_adapt_proxy` algorithm and associated pipeline contracts.
 
 Boundary conditions:
-- `lr_adapt_proxy` is a transparent, repository-local proxy algorithm.
+- `lr_adapt_proxy` is a transparent repository-local proxy algorithm.
 - It is not claimed as an exact reproduction of Nomura et al. or any external LR-Adapt implementation.
 - Claims in this document are scoped to repository artifacts and run configurations cited here.
 
 ## 2. Baseline Context (Vanilla CMA-ES vs Proxy Add-on)
-`vanilla_cma` uses pycma’s standard `ask`/`tell` adaptation loop. In this repository, `lr_adapt_proxy` adds one extra post-`tell` control signal:
+`vanilla_cma` uses pycma's standard `ask`/`tell` adaptation loop. In this repository, `lr_adapt_proxy` adds one post-`tell` control signal:
 - It reads current-generation fitness values.
 - It computes an SNR-like progress statistic.
 - It smooths that statistic with EMA.
@@ -37,7 +35,7 @@ What does not directly change:
 - No direct replacement of covariance update equations.
 - Mean/covariance internal pycma updates still run through `tell`.
 
-## 3. Formal Definition
+## 3. Formal Definition (Math View of the Implemented Rule)
 For minimization, generation fitness vector `f_t`:
 
 - `b_t = min(f_t)` (current generation best)
@@ -68,55 +66,86 @@ Where:
 - `r_max = sigma_max_ratio`
 - `sigma0 = initial_sigma`
 
-## 4. Algorithm Pseudocode
-```text
-Input per generation: es, fitness[], state(best_so_far, ema_snr), params
+## 4. Implementation Snippet
+Actual implementation excerpt from `experiments/lr_adapt_proxy.py`:
 
-current_best <- min(fitness)
-prev_best <- current_best if state.best_so_far is None else state.best_so_far
+```python
+from dataclasses import dataclass
 
-signal <- max(prev_best - current_best, 0)
-noise <- 1.4826 * MAD(fitness) + 1e-12
-snr <- signal / noise
+import numpy as np
 
-state.ema_snr <- alpha * snr + (1 - alpha) * state.ema_snr
 
-factor <- 1.0
-if state.ema_snr < snr_down_threshold:
-    factor <- sigma_down_factor
-else if state.ema_snr > snr_up_threshold:
-    factor <- sigma_up_factor
+@dataclass
+class LRProxyState:
+    initial_sigma: float
+    ema_snr: float = 0.0
+    best_so_far: float | None = None
 
-sigma_min <- state.initial_sigma * sigma_min_ratio
-sigma_max <- state.initial_sigma * sigma_max_ratio
-es.sigma <- clip(es.sigma * factor, sigma_min, sigma_max)
 
-state.best_so_far <- min(prev_best, current_best)
+def robust_spread(values: np.ndarray) -> float:
+    med = np.median(values)
+    mad = np.median(np.abs(values - med))
+    return float(1.4826 * mad + 1e-12)
 
-Return diagnostics: signal, noise, snr, ema_snr, factor, sigma
+
+def apply_lr_adapt_proxy(
+    es,
+    fitness: np.ndarray,
+    state: LRProxyState,
+    params: dict,
+) -> dict[str, float]:
+    current_best = float(np.min(fitness))
+    prev_best = current_best if state.best_so_far is None else state.best_so_far
+    signal = max(prev_best - current_best, 0.0)
+    noise = robust_spread(fitness)
+    snr = signal / noise
+
+    alpha = float(params["ema_alpha"])
+    state.ema_snr = alpha * snr + (1.0 - alpha) * state.ema_snr
+
+    factor = 1.0
+    if state.ema_snr < float(params["snr_down_threshold"]):
+        factor = float(params["sigma_down_factor"])
+    elif state.ema_snr > float(params["snr_up_threshold"]):
+        factor = float(params["sigma_up_factor"])
+
+    sigma_min = state.initial_sigma * float(params["sigma_min_ratio"])
+    sigma_max = state.initial_sigma * float(params["sigma_max_ratio"])
+    es.sigma = float(np.clip(es.sigma * factor, sigma_min, sigma_max))
+    state.best_so_far = min(prev_best, current_best)
+
+    return {
+        "proxy_signal": signal,
+        "proxy_noise": noise,
+        "proxy_snr": snr,
+        "proxy_ema_snr": state.ema_snr,
+        "proxy_sigma_factor": factor,
+        "proxy_sigma": float(es.sigma),
+    }
 ```
 
 ## 5. Implementation Mapping
-Code mapping for the equations and pseudocode above:
+Code mapping for the equations and snippet above:
 
 | Spec Item | Implementation Location |
 |---|---|
-| State fields (`initial_sigma`, `ema_snr`, `best_so_far`) | `experiments/lr_adapt_proxy.py:8-13` |
+| State fields (`initial_sigma`, `ema_snr`, `best_so_far`) | `experiments/lr_adapt_proxy.py:8-12` |
 | Robust spread (`1.4826 * MAD + 1e-12`) | `experiments/lr_adapt_proxy.py:15-18` |
 | Current best / previous best | `experiments/lr_adapt_proxy.py:35-37` |
 | Signal / noise / SNR | `experiments/lr_adapt_proxy.py:37-39` |
 | EMA update | `experiments/lr_adapt_proxy.py:41-43` |
-| Threshold-based factor logic | `experiments/lr_adapt_proxy.py:44-49` |
+| Threshold-based factor logic | `experiments/lr_adapt_proxy.py:44-48` |
 | Sigma clamp bounds and sigma assignment | `experiments/lr_adapt_proxy.py:50-53` |
 | Best-so-far monotone update | `experiments/lr_adapt_proxy.py:53` |
 | Returned diagnostics payload | `experiments/lr_adapt_proxy.py:55-62` |
-| Proxy invoked after `tell` | `experiments/methods.py:124-129` |
-| Per-run diagnostics persisted in output rows | `experiments/methods.py:141-143` |
+| Proxy invoked after `tell` | `experiments/methods.py:109-114` |
+| Per-run diagnostics persisted in output rows | `experiments/methods.py:126-128` |
 
 ## 6. Parameter Semantics and Defaults
-Baseline parameter values are currently identical in:
+Baseline parameter values are currently aligned in:
 - `experiments/config/high_rigor.yaml`
-- `experiments/config/ablation_pwlr_vs_lr.yaml`
+- `experiments/config/eval_only_lr_vs_vanilla.yaml`
+- `experiments/config/lr_proxy_sensitivity.yaml`
 
 | Parameter | Meaning | Default |
 |---|---|---:|
@@ -146,44 +175,51 @@ Edge cases:
 - No new best:
   - `signal = 0` by construction.
 - First generation:
-  - `prev_best` initialized from current generation best.
+  - `prev_best` initializes from current generation best.
 
 ## 8. Empirical Evidence Summary
 All numbers below are copied from tracked artifacts.
 
 ### 8.1 High-Rigor Matrix Result
-Run: `20260305T002116Z-6ae43213`  
-Artifact: `artifacts/runs/high-rigor/20260305T002116Z-6ae43213/results/method_aggregate.csv`
+Run: `20260305T060114Z-cac939ce`  
+Artifact: `artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/method_aggregate.csv`
 
 `lr_adapt_proxy` aggregate row:
 - `median_of_cell_median_delta = -18.87208878679076`
 - `mean_win_rate = 0.505`
-- `cells_q_lt_0_05 = 34`
-- `best_q_value = 1.9198452288232053e-17`
+- `cells_q_lt_0_05 = 35`
+- `best_q_value = 1.2287009464468514e-17`
+
+`pop4x` aggregate row:
+- `median_of_cell_median_delta = 58.69544875079048`
+- `mean_win_rate = 0.0797222222222222`
+- `cells_q_lt_0_05 = 36`
 
 Sign convention for minimization comparisons:
 - Negative `median_delta_vs_vanilla` is better than vanilla.
 
-### 8.2 Additive Ablation (PW+LR vs LR)
-Pairwise method orientation:
-- `method_a = lr_adapt_proxy`
-- `method_b = phasewall_plus_lr_tuned`
-- `median_delta_b_minus_a < 0` means method B better.
+### 8.2 Pairwise (Vanilla vs LR Proxy)
+Artifact: `artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results/pairwise_lr_vs_vanilla.json`
 
-High-rigor pairwise artifact (`run_id=20260305T002116Z-6ae43213`) and eval-only ablation artifact (`run_id=20260305T014110Z-321d79b1`) report the same summary:
+Pairwise orientation:
+- `method_a = vanilla_cma`
+- `method_b = lr_adapt_proxy`
+- `median_delta_b_minus_a < 0` means method B (`lr_adapt_proxy`) is better.
+
+Summary:
 - `n_cells = 36`
-- `n_q_lt_0_05 = 0`
-- `n_p_lt_0_05 = 1`
-- `n_b_better = 17`
-- `n_a_better = 19`
-- `median_of_cell_median_delta_b_minus_a = 0.0020168290256957957`
+- `n_q_lt_0_05 = 35`
+- `n_p_lt_0_05 = 35`
+- `n_b_better = 21`
+- `n_a_better = 15`
+- `median_of_cell_median_delta_b_minus_a = -18.872088786790762`
 
 Interpretation:
-- Under this protocol, no BH-FDR-corrected evidence of incremental gain from adding PhaseWall on top of LR proxy.
+- Under this protocol, `lr_adapt_proxy` outperforms vanilla in most cells with broad corrected significance.
 
 ### 8.3 Sensitivity Sweep Headline
-Run: `20260305T012829Z-1a889aa0`  
-Artifact: `artifacts/runs/lr-proxy-sensitivity/20260305T012829Z-1a889aa0/results/sensitivity_summary.csv`
+Run: `20260305T060340Z-1a889aa0`  
+Artifact: `artifacts/runs/lr-proxy-sensitivity/20260305T060340Z-1a889aa0/results/sensitivity_summary.csv`
 
 Rows in sweep summary: `9`
 
@@ -230,9 +266,9 @@ Minimal command set:
 bash scripts/run_high_rigor_pipeline.sh --workers 8
 ```
 
-2. Eval-only additive ablation:
+2. Eval-only vanilla-vs-lr comparison:
 ```bash
-bash scripts/run_phasewall_ablation_pipeline.sh --workers 8
+bash scripts/run_eval_only_lr_vs_vanilla.sh --workers 8
 ```
 
 3. Sensitivity sweep:
@@ -240,22 +276,32 @@ bash scripts/run_phasewall_ablation_pipeline.sh --workers 8
 bash scripts/run_lr_proxy_sensitivity.sh --workers 8
 ```
 
-4. Artifact verification:
+4. Optional smoke pipeline:
+```bash
+bash scripts/run_smoke_pipeline.sh --workers 8
+```
+
+5. Artifact verification (example run IDs from current outputs):
 ```bash
 python3 scripts/verify_rerun_artifacts.py \
-  --results-dir artifacts/runs/high-rigor/20260305T002116Z-6ae43213/results \
-  --figdir artifacts/runs/high-rigor/20260305T002116Z-6ae43213/figures \
+  --results-dir artifacts/runs/high-rigor/20260305T060114Z-cac939ce/results \
+  --figdir artifacts/runs/high-rigor/20260305T060114Z-cac939ce/figures \
   --config experiments/config/high_rigor.yaml \
   --mode full \
   --require-pairwise
 
 python3 scripts/verify_rerun_artifacts.py \
-  --results-dir artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/results \
-  --figdir artifacts/runs/phasewall-ablation/20260305T014110Z-321d79b1/figures \
-  --config experiments/config/ablation_pwlr_vs_lr.yaml \
+  --results-dir artifacts/runs/eval-only-lr-vs-vanilla/20260305T060239Z-2f5b6f1b/results \
+  --figdir artifacts/runs/eval-only-lr-vs-vanilla/20260305T060239Z-2f5b6f1b/figures \
+  --config experiments/config/eval_only_lr_vs_vanilla.yaml \
   --mode eval_only \
   --require-pairwise
 ```
+
+Pairwise artifacts produced by current wrappers:
+- `pairwise_lr_vs_vanilla.csv`
+- `pairwise_lr_vs_vanilla.json`
+- `findings_pairwise.md`
 
 ## 11. Limitations and Open Questions
 Known limitations:
@@ -266,4 +312,9 @@ Known limitations:
 Open questions:
 - Which proxy components drive gains most strongly (threshold band vs clamp window vs factors)?
 - How does proxy behavior transfer beyond current function families and budget regime?
-- What additional diagnostics should be logged for generation-level causal analysis (not just final generation snapshots)?
+- What additional diagnostics should be logged for generation-level causal analysis (not just final-generation snapshots)?
+
+## 12. Maintenance Note
+- `docs/analysis/lr_adapt_proxy_technical_spec.md` is the canonical algorithm and pipeline contract document.
+- `README.md` intentionally mirrors this document for discoverability.
+- When contracts change, update this spec first, then mirror those updates into `README.md`.
