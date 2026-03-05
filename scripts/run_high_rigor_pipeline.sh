@@ -48,10 +48,10 @@ python3 -m experiments.findings \
 
 python3 -m experiments.pairwise \
   --runs "$RESULTS_DIR/runs_long.csv" \
-  --method-a lr_adapt_proxy \
-  --method-b phasewall_plus_lr_tuned \
+  --method-a vanilla_cma \
+  --method-b lr_adapt_proxy \
   --outdir "$RESULTS_DIR" \
-  --output-prefix pairwise_pwlr_vs_lr \
+  --output-prefix pairwise_lr_vs_vanilla \
   --phase eval \
   --analysis-manifest "$RESULTS_DIR/analysis_manifest.json" \
   --manifest-json "$RESULTS_DIR/manifest.json"

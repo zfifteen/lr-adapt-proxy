@@ -1,21 +1,17 @@
-experiment_name: phasewall_additive_ablation_pwlr_vs_lr
+experiment_name: eval_only_lr_vs_vanilla
 matrix:
   functions: [sphere, rosenbrock, rastrigin, ellipsoid_cond1e6]
   dimensions: [10, 20, 40]
   noise_sigmas: [0.0, 0.1, 0.2]
 methods:
+  - vanilla_cma
   - lr_adapt_proxy
-  - phasewall_plus_lr_tuned
 budget:
   evals_per_run: 1000
 cma:
   initial_sigma: 2.0
   base_popsize: 10
   verbose: -9
-phasewall:
-  fixed_strengths:
-    lr_adapt_proxy: 0.0
-    phasewall_plus_lr_tuned: 0.1
 lr_adapt_proxy:
   enabled: true
   ema_alpha: 0.2

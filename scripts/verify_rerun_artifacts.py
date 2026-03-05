@@ -159,8 +159,12 @@ def main() -> int:
 
     phase_set = set(runs["phase"].unique())
     if args.mode == "full":
-        if not {"tune_baseline", "tune_candidate", "eval"}.issubset(phase_set):
-            fail("runs_long.csv must contain tune_baseline, tune_candidate, and eval phases in full mode")
+        allowed_phases = {"eval", "tune_baseline", "tune_candidate"}
+        unexpected = phase_set.difference(allowed_phases)
+        if unexpected:
+            fail(f"runs_long.csv contains unsupported phases in full mode: {sorted(unexpected)}")
+        if "eval" not in phase_set:
+            fail("runs_long.csv must contain eval phase in full mode")
     else:
         if phase_set != {"eval"}:
             fail(f"runs_long.csv must contain only eval phase in eval_only mode; got {sorted(phase_set)}")
@@ -175,21 +179,17 @@ def main() -> int:
     selected = json.loads((results_dir / "selected_params.json").read_text(encoding="utf-8"))
     with open(args.config, "r", encoding="utf-8") as fh:
         config = yaml.safe_load(fh)
-    if args.mode == "full":
-        allowed_s = {float(v) for v in config["phasewall"]["s_candidates"]}
-        for method in ["phasewall_tuned", "phasewall_plus_lr_tuned"]:
-            if method not in selected:
-                fail(f"selected_params.json missing method: {method}")
-            if float(selected[method]) not in allowed_s:
-                fail(f"Selected s for {method} not in configured candidates")
-    else:
-        for method in config["methods"]:
-            if method not in selected:
-                fail(f"selected_params.json missing method from config methods: {method}")
-            try:
-                float(selected[method])
-            except Exception as exc:
-                fail(f"selected_params.json value for {method} is not numeric: {exc}")
+
+    if not isinstance(selected, dict):
+        fail("selected_params.json must be a JSON object")
+    config_methods = set(config.get("methods", []))
+    for method, value in selected.items():
+        if config_methods and method not in config_methods:
+            fail(f"selected_params.json includes unknown method not in config: {method}")
+        try:
+            float(value)
+        except Exception as exc:
+            fail(f"selected_params.json value for {method} is not numeric: {exc}")
 
     cell_stats = pd.read_csv(results_dir / "cell_stats.csv")
     missing_cell_cols = CELL_STATS_COLS.difference(cell_stats.columns)
@@ -264,19 +264,19 @@ def main() -> int:
         fail("findings tuning.selected_params mismatch vs selected_params.json")
 
     if args.require_pairwise:
-        pairwise_csv = results_dir / "pairwise_pwlr_vs_lr.csv"
-        pairwise_json = results_dir / "pairwise_pwlr_vs_lr.json"
-        ablation_md = results_dir / "findings_ablation.md"
-        for path in [pairwise_csv, pairwise_json, ablation_md]:
+        pairwise_csv = results_dir / "pairwise_lr_vs_vanilla.csv"
+        pairwise_json = results_dir / "pairwise_lr_vs_vanilla.json"
+        pairwise_md = results_dir / "findings_pairwise.md"
+        for path in [pairwise_csv, pairwise_json, pairwise_md]:
             if not path.is_file():
                 fail(f"Missing required pairwise artifact: {path}")
 
         pairwise_df = pd.read_csv(pairwise_csv)
         missing_pairwise_cols = PAIRWISE_COLS.difference(pairwise_df.columns)
         if missing_pairwise_cols:
-            fail(f"pairwise_pwlr_vs_lr.csv missing columns: {sorted(missing_pairwise_cols)}")
+            fail(f"pairwise_lr_vs_vanilla.csv missing columns: {sorted(missing_pairwise_cols)}")
         if pairwise_df.empty:
-            fail("pairwise_pwlr_vs_lr.csv must not be empty")
+            fail("pairwise_lr_vs_vanilla.csv must not be empty")
 
         expected_cells = (
             len(config["matrix"]["functions"])
@@ -284,7 +284,7 @@ def main() -> int:
             * len(config["matrix"]["noise_sigmas"])
         )
         if int(len(pairwise_df)) != int(expected_cells):
-            fail(f"pairwise_pwlr_vs_lr.csv row count mismatch: expected {expected_cells}, got {len(pairwise_df)}")
+            fail(f"pairwise_lr_vs_vanilla.csv row count mismatch: expected {expected_cells}, got {len(pairwise_df)}")
 
         if (pairwise_df["bh_fdr_q_value"] < 0).any() or (pairwise_df["bh_fdr_q_value"] > 1).any():
             fail("pairwise bh_fdr_q_value must be in [0,1]")
@@ -293,7 +293,7 @@ def main() -> int:
             fail("pairwise wilcoxon_p_two_sided must be in [0,1]")
 
         files = analysis_manifest.get("files", {})
-        for key in ["pairwise_pwlr_vs_lr_csv", "pairwise_pwlr_vs_lr_json", "findings_ablation_md"]:
+        for key in ["pairwise_lr_vs_vanilla_csv", "pairwise_lr_vs_vanilla_json", "findings_pairwise_md"]:
             if key not in files:
                 fail(f"analysis_manifest.json missing files.{key}")
             p = _to_existing_path(str(files[key]), repo_root)

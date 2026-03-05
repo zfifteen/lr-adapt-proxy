@@ -99,7 +99,6 @@ def _make_jobs_for_variant(config: dict[str, Any], variant: dict[str, Any]) -> l
                         "initial_sigma": float(config["cma"]["initial_sigma"]),
                         "base_popsize": int(config["cma"]["base_popsize"]),
                         "cma_verbose": int(config["cma"].get("verbose", -9)),
-                        "phasewall_strength": 0.0,
                         "lr_proxy_params": dict(variant["lr_params"]),
                     }
                 )

@@ -10,15 +10,12 @@ import numpy as np
 
 from experiments.lr_adapt_proxy import LRProxyState, apply_lr_adapt_proxy
 from experiments.objectives import noisy_objective
-from experiments.phasewall import damp_candidates_with_phasewall
 
 
 ALL_METHODS = [
     "vanilla_cma",
     "lr_adapt_proxy",
     "pop4x",
-    "phasewall_tuned",
-    "phasewall_plus_lr_tuned",
 ]
 
 
@@ -26,11 +23,9 @@ def method_flags(method_name: str) -> dict[str, Any]:
     if method_name not in ALL_METHODS:
         raise ValueError(f"Unknown method: {method_name}")
 
-    use_phasewall = method_name in {"phasewall_tuned", "phasewall_plus_lr_tuned"}
-    use_lr = method_name in {"lr_adapt_proxy", "phasewall_plus_lr_tuned"}
+    use_lr = method_name == "lr_adapt_proxy"
     popsize_multiplier = 4 if method_name == "pop4x" else 1
     return {
-        "use_phasewall": use_phasewall,
         "use_lr": use_lr,
         "popsize_multiplier": popsize_multiplier,
     }
@@ -57,7 +52,6 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
     initial_sigma = float(job["initial_sigma"])
     base_popsize = int(job["base_popsize"])
     popsize = int(base_popsize * flags["popsize_multiplier"])
-    phasewall_strength = float(job.get("phasewall_strength") or 0.0)
     lr_params = dict(job.get("lr_proxy_params") or {})
     cma_verbose = int(job.get("cma_verbose", -9))
 
@@ -78,7 +72,6 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
         "seed": seed,
         "eval_budget": eval_budget,
         "popsize": popsize,
-        "phasewall_strength": phasewall_strength,
         "status": "ok",
         "error_message": "",
     }
@@ -102,21 +95,13 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
 
         proxy_sigma_factor_last = 1.0
         proxy_ema_snr_last = 0.0
-        phasewall_mean_scale = 1.0
 
         while eval_count < eval_budget:
             candidates = np.asarray(es.ask(), dtype=float)
-
-            if flags["use_phasewall"] and phasewall_strength > 0.0:
-                eval_points, _, scales = damp_candidates_with_phasewall(es, candidates, phasewall_strength)
-                phasewall_mean_scale = float(np.mean(scales))
-            else:
-                eval_points = candidates
-
             fitness = np.array(
                 [
                     noisy_objective(function_name, point, noise_sigma, rng)
-                    for point in eval_points
+                    for point in candidates
                 ],
                 dtype=float,
             )
@@ -140,7 +125,6 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
             "final_best": float(best_so_far),
             "proxy_sigma_factor_last": proxy_sigma_factor_last,
             "proxy_ema_snr_last": proxy_ema_snr_last,
-            "phasewall_mean_scale_last": phasewall_mean_scale,
             "duration_sec": duration_sec,
         }
     except Exception as exc:  # pragma: no cover - defensive path
@@ -154,7 +138,6 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
             "final_best": np.nan,
             "proxy_sigma_factor_last": np.nan,
             "proxy_ema_snr_last": np.nan,
-            "phasewall_mean_scale_last": np.nan,
             "duration_sec": duration_sec,
         }
 

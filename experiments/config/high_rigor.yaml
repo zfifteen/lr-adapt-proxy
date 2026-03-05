@@ -7,16 +7,12 @@ methods:
   - vanilla_cma
   - lr_adapt_proxy
   - pop4x
-  - phasewall_tuned
-  - phasewall_plus_lr_tuned
 budget:
   evals_per_run: 1000
 cma:
   initial_sigma: 2.0
   base_popsize: 10
   verbose: -9
-phasewall:
-  s_candidates: [0.1, 0.2, 0.4, 0.6, 0.8]
 lr_adapt_proxy:
   enabled: true
   ema_alpha: 0.2

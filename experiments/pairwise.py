@@ -26,9 +26,9 @@ def _top_rows(df: pd.DataFrame, ascending: bool, n: int = 5) -> list[dict[str, A
     return ranked[cols].to_dict(orient="records")
 
 
-def _build_findings_ablation_markdown(summary: dict[str, Any]) -> str:
+def _build_findings_pairwise_markdown(summary: dict[str, Any]) -> str:
     lines = [
-        "# Pairwise Ablation Findings",
+        "# Pairwise Findings",
         "",
         "## Run Identity",
         f"- Run ID: `{summary['run_id']}`",
@@ -78,7 +78,7 @@ def generate_pairwise_artifacts(
     method_a: str,
     method_b: str,
     outdir: str | Path,
-    output_prefix: str = "pairwise_pwlr_vs_lr",
+    output_prefix: str = "pairwise_lr_vs_vanilla",
     phase: str = "eval",
     analysis_manifest_path: str | Path | None = None,
     manifest_json_path: str | Path | None = None,
@@ -96,7 +96,7 @@ def generate_pairwise_artifacts(
 
     csv_path = out_path / f"{output_prefix}.csv"
     json_path = out_path / f"{output_prefix}.json"
-    findings_md_path = out_path / "findings_ablation.md"
+    findings_md_path = out_path / "findings_pairwise.md"
     save_csv(csv_path, pairwise_df)
 
     run_id = "unknown"
@@ -125,17 +125,17 @@ def generate_pairwise_artifacts(
         "pairwise_json": str(json_path),
     }
     save_json(json_path, summary)
-    findings_md_path.write_text(_build_findings_ablation_markdown(summary), encoding="utf-8")
+    findings_md_path.write_text(_build_findings_pairwise_markdown(summary), encoding="utf-8")
 
     if analysis_manifest_path:
         analysis_manifest = load_json(analysis_manifest_path)
         files = dict(analysis_manifest.get("files", {}))
         files[f"{output_prefix}_csv"] = str(csv_path)
         files[f"{output_prefix}_json"] = str(json_path)
-        if output_prefix == "pairwise_pwlr_vs_lr":
-            files["pairwise_pwlr_vs_lr_csv"] = str(csv_path)
-            files["pairwise_pwlr_vs_lr_json"] = str(json_path)
-            files["findings_ablation_md"] = str(findings_md_path)
+        if output_prefix == "pairwise_lr_vs_vanilla":
+            files["pairwise_lr_vs_vanilla_csv"] = str(csv_path)
+            files["pairwise_lr_vs_vanilla_json"] = str(json_path)
+            files["findings_pairwise_md"] = str(findings_md_path)
         analysis_manifest["files"] = files
         analysis_manifest["updated_at_utc"] = datetime.now(timezone.utc).isoformat()
         save_json(analysis_manifest_path, analysis_manifest)
@@ -143,7 +143,7 @@ def generate_pairwise_artifacts(
     return {
         "pairwise_csv": str(csv_path),
         "pairwise_json": str(json_path),
-        "findings_ablation_md": str(findings_md_path),
+        "findings_pairwise_md": str(findings_md_path),
     }
 
 

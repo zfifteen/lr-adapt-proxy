@@ -126,7 +126,7 @@ def parse_pairwise_args() -> argparse.Namespace:
     parser.add_argument("--outdir", required=True, help="Directory for pairwise outputs")
     parser.add_argument(
         "--output-prefix",
-        default="pairwise_pwlr_vs_lr",
+        default="pairwise_lr_vs_vanilla",
         help="Output prefix for CSV/JSON artifacts",
     )
     parser.add_argument(
