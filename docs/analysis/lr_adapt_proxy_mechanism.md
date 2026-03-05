@@ -4,8 +4,10 @@
 This document describes the repository-local `lr_adapt_proxy` mechanism used in the pycma rerun pipeline. It is intentionally labeled a proxy and is not claimed as an exact reimplementation of external LR-Adapt variants.
 
 Primary implementation references:
-- `experiments/lr_adapt_proxy.py` (update rule)
-- `experiments/methods.py` (post-`tell` wiring)
+- `experiments/adaptation/policies/lr_proxy.py` (policy update rule)
+- `experiments/adaptation/clients/pycma_sigma.py` (sigma action application)
+- `experiments/lr_adapt_proxy.py` (legacy-compatible shim)
+- `experiments/methods.py` (post-`tell` policy/context wiring)
 - `docs/analysis/rerun_protocol.md` (protocol caveat and evaluation context)
 
 ## What Vanilla CMA-ES Does vs What the Proxy Adds
@@ -16,6 +18,13 @@ Vanilla CMA-ES (`vanilla_cma`) uses pycma's internal adaptation path in `tell` (
 2. Smooth with EMA.
 3. Apply multiplicative sigma up/down factor based on thresholds.
 4. Clamp sigma to configured bounds relative to initial sigma.
+
+Current code path separation:
+- Policy (`LRProxyPolicy`) computes the decision and diagnostics.
+- Client adapter (`apply_sigma_action`) applies the returned `next_value` to `es.sigma`.
+- Compatibility shim is maintained for legacy callsites only.
+- This policy+adapter split is the canonical implementation path.
+- `proxy_*` diagnostics names are intentionally retained as v1 compatibility debt for schema continuity.
 
 No direct covariance-matrix equation is replaced by this proxy. The direct write is to `es.sigma`; covariance effects are indirect via subsequent sampling.
 
@@ -36,8 +45,8 @@ For generation fitness values `f` (minimization):
 
 `previous_best` is then updated to `min(previous_best, current_best)`.
 
-## Active Baseline Parameters (High-Rigor / Ablation)
-From `experiments/config/high_rigor.yaml` and `experiments/config/ablation_pwlr_vs_lr.yaml`:
+## Active Baseline Parameters (Current Config Set)
+From `experiments/config/high_rigor.yaml`, `experiments/config/eval_only_lr_vs_vanilla.yaml`, and `experiments/config/lr_proxy_sensitivity.yaml`:
 
 | Parameter | Value |
 |---|---:|

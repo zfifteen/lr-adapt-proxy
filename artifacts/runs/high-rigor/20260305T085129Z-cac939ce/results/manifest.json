@@ -1,0 +1,36 @@
+{
+  "config_hash": "cac939ced1decbce009884f348425b5725eccf6d35277e9e9e392df139dfc9bb",
+  "config_path": "experiments/config/high_rigor.yaml",
+  "counts": {
+    "methods": [
+      "vanilla_cma",
+      "lr_adapt_proxy",
+      "pop4x"
+    ],
+    "status_by_phase": [
+      {
+        "count": 10800,
+        "phase": "eval",
+        "status": "ok"
+      }
+    ],
+    "total_runs": 10800
+  },
+  "created_at_utc": "2026-03-05T08:51:30.365510+00:00",
+  "files": {
+    "manifest_json": "artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/manifest.json",
+    "runs_long_csv": "artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/runs_long.csv",
+    "selected_params_json": "artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/selected_params.json",
+    "tuning_summary_csv": "artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results/tuning_summary.csv"
+  },
+  "git_commit": "730a75a",
+  "notes": {
+    "evaluation_policy": "Forward-only pipeline using current method set.",
+    "lr_adapt_proxy": "Proxy implementation for transparency; not exact Nomura reproduction."
+  },
+  "run_id": "20260305T085129Z-cac939ce",
+  "run_root": "artifacts/runs/high-rigor/20260305T085129Z-cac939ce/results",
+  "run_scope": "high_rigor_rerun_pipeline",
+  "selected_params": {},
+  "workers": 8
+}
