@@ -40,11 +40,15 @@ def _validate_config(config: dict[str, Any]) -> None:
     if unknown:
         raise ValueError(f"Unknown methods in config: {unknown}")
 
-    tune_seeds = {int(s) for s in config["seeds"]["tune"]}
-    eval_seeds = {int(s) for s in config["seeds"]["eval"]}
+    tune_seeds = {int(s) for s in config.get("seeds", {}).get("tune", [])}
+    eval_seeds = {int(s) for s in config.get("seeds", {}).get("eval", [])}
     overlap = tune_seeds.intersection(eval_seeds)
     if overlap:
         raise ValueError(f"Tune/Eval seed sets must be disjoint, overlap={sorted(overlap)}")
+
+    tuning_cfg = config.get("tuning")
+    if not tuning_cfg:
+        return
 
     full_cells = {
         (f, int(d), float(n))
@@ -54,9 +58,9 @@ def _validate_config(config: dict[str, Any]) -> None:
     }
     subset = {
         (f, int(d), float(n))
-        for f in config["tuning"]["task_subset"]["functions"]
-        for d in config["tuning"]["task_subset"]["dimensions"]
-        for n in config["tuning"]["task_subset"]["noise_sigmas"]
+        for f in tuning_cfg["task_subset"]["functions"]
+        for d in tuning_cfg["task_subset"]["dimensions"]
+        for n in tuning_cfg["task_subset"]["noise_sigmas"]
     }
     if not subset.issubset(full_cells):
         raise ValueError("Tuning task subset must be contained in full matrix")
@@ -65,6 +69,8 @@ def _validate_config(config: dict[str, Any]) -> None:
 
 
 def _make_eval_jobs(config: dict[str, Any], selected_params: dict[str, float]) -> list[dict[str, Any]]:
+    _ = selected_params
+
     jobs: list[dict[str, Any]] = []
     cells = build_cells(config["matrix"])
     eval_seeds = [int(s) for s in config["seeds"]["eval"]]
@@ -72,11 +78,6 @@ def _make_eval_jobs(config: dict[str, Any], selected_params: dict[str, float]) -
     for method_name in config["methods"]:
         for cell in cells:
             for seed in eval_seeds:
-                if method_name in selected_params:
-                    strength = float(selected_params[method_name])
-                else:
-                    strength = 0.0
-
                 jobs.append(
                     {
                         "phase": "eval",
@@ -89,7 +90,6 @@ def _make_eval_jobs(config: dict[str, Any], selected_params: dict[str, float]) -
                         "initial_sigma": float(config["cma"]["initial_sigma"]),
                         "base_popsize": int(config["cma"]["base_popsize"]),
                         "cma_verbose": int(config["cma"].get("verbose", -9)),
-                        "phasewall_strength": strength,
                         "lr_proxy_params": dict(config["lr_adapt_proxy"]),
                     }
                 )
@@ -158,7 +158,7 @@ def execute_pipeline(
         },
         "notes": {
             "lr_adapt_proxy": "Proxy implementation for transparency; not exact Nomura reproduction.",
-            "phasewall_tune_then_eval": "Tuning uses disjoint task subset and disjoint seed set from evaluation.",
+            "evaluation_policy": "Forward-only pipeline using current method set.",
         },
     }
     save_json(manifest_path, manifest)

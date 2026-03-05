@@ -3,7 +3,6 @@
 __all__ = [
     "io",
     "objectives",
-    "phasewall",
     "lr_adapt_proxy",
     "methods",
     "tuning",
