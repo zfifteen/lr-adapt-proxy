@@ -10,8 +10,6 @@ Canonical algorithm specification:
 - `vanilla_cma`
 - `lr_adapt_proxy`
 - `pop4x`
-- `phasewall_tuned`
-- `phasewall_plus_lr_tuned`
 
 ### LR-Adapt proxy caveat
 `lr_adapt_proxy` is an explicit repository-local proxy, not an exact reproduction of Nomura et al. or the historical bundled report implementation. All outputs retain `proxy` naming to avoid overclaiming.
@@ -25,31 +23,14 @@ Proxy sigma update (per generation):
 6. Else if `ema_snr > up_threshold`, apply `sigma *= sigma_up_factor`.
 7. Clamp sigma to `[sigma_min_ratio * sigma0, sigma_max_ratio * sigma0]`.
 
-## PhaseWall definition
-For candidate displacement `d = y - mean`, compute Mahalanobis radius in current CMA state:
-
-`r = sqrt(((d/sigma)^T C^{-1} (d/sigma)))`
-
-Let `r0 = sqrt(dimension - 2/3)`. For `r > r0`:
-
-`a = clip(1 - s * (1 - r0/r), 0, 1)`
-
-Evaluate at `mean + a * d`, but call `tell` with original undamped candidate and damped-point fitness.
-
 ## Matrix
 - Functions: `sphere`, `rosenbrock`, `rastrigin`, `ellipsoid_cond1e6`
 - Dimensions: `10, 20, 40`
 - Noise: `0.0, 0.1, 0.2`
 
-## Tune-then-evaluate split (strict)
-- Tuning tasks: all functions, dimensions `{10,20}`, noise `{0.1}`
-- Tuning seeds and evaluation seeds are disjoint by config and validated at runtime.
-- Candidate strengths: `s in {0.1, 0.2, 0.4, 0.6, 0.8}`
-
-Selection rule per tuned method:
-1. Minimize global median paired delta `(method - vanilla)` over tuning tasks/seeds.
-2. Tie-breaker: higher win-rate vs vanilla.
-3. Tie-breaker: smaller `s`.
+## Tune/eval behavior
+- Full pipeline supports tune/eval split but currently has no tunable method family.
+- `tuning_summary.csv` and `selected_params.json` are still emitted for schema continuity.
 
 ## Statistical outputs
 Primary columns:
@@ -63,7 +44,7 @@ A ratio column may be emitted as non-primary descriptor only.
 
 ## CLI
 - Run pipeline: `python3 -m experiments.run --config <yaml> --outdir <dir>`
-- Run eval-only pipeline (no tuning): `python3 -m experiments.run_eval_only --config <yaml> --outdir <dir>`
+- Run eval-only pipeline: `python3 -m experiments.run_eval_only --config <yaml> --outdir <dir>`
 - Analyze runs: `python3 -m experiments.analyze --runs <runs_long.csv> --outdir <dir> --manifest-json <manifest.json>`
 - Generate findings: `python3 -m experiments.findings --results-dir <dir> --figdir <figdir>`
 - Generate pairwise comparison: `python3 -m experiments.pairwise --runs <runs_long.csv> --method-a <A> --method-b <B> --outdir <dir> --output-prefix <name>`
@@ -71,12 +52,12 @@ A ratio column may be emitted as non-primary descriptor only.
 - Generate LR-proxy breakdown tables: `python3 -m experiments.lr_proxy_breakdown --cell-stats <cell_stats.csv> --outdir <dir>`
 - Smoke end-to-end: `python3 -m experiments.smoke --config experiments/config/smoke.yaml`
 - High-rigor wrapper: `bash scripts/run_high_rigor_pipeline.sh [--workers N]`
-- PhaseWall additive ablation wrapper: `bash scripts/run_phasewall_ablation_pipeline.sh [--workers N]`
+- Eval-only lr-vs-vanilla wrapper: `bash scripts/run_eval_only_lr_vs_vanilla.sh [--workers N]`
 - LR-proxy sensitivity wrapper: `bash scripts/run_lr_proxy_sensitivity.sh [--workers N]`
 
 ## Verifier Modes
 - Full pipeline mode: `python3 scripts/verify_rerun_artifacts.py --mode full ...`
-- Eval-only ablation mode: `python3 scripts/verify_rerun_artifacts.py --mode eval_only --require-pairwise ...`
+- Eval-only mode: `python3 scripts/verify_rerun_artifacts.py --mode eval_only --require-pairwise ...`
 
 ## Run Identity Contract
 Each pipeline invocation is assigned a stable run identifier:
@@ -96,8 +77,8 @@ Each run results directory emits:
 
 - `findings.json` (machine-readable)
 - `findings.md` (human-readable)
-- `pairwise_pwlr_vs_lr.csv` and `pairwise_pwlr_vs_lr.json` when pairwise comparator is requested
-- `findings_ablation.md` for pairwise ablation narrative
+- `pairwise_lr_vs_vanilla.csv` and `pairwise_lr_vs_vanilla.json` when pairwise comparator is requested
+- `findings_pairwise.md` for pairwise narrative
 
 These findings are run-scoped and must link back to:
 - `manifest.json`
