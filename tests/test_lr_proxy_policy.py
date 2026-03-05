@@ -67,6 +67,8 @@ def legacy_step(
         "proxy_ema_snr": ema_snr,
         "proxy_sigma_factor": factor,
         "proxy_sigma": next_sigma,
+        "proxy_current_best": current_best,
+        "proxy_best_so_far": prev_best,
     }
     return diagnostics, next_sigma, next_state
 
@@ -153,6 +155,8 @@ class LRProxyPolicyTests(unittest.TestCase):
                 "proxy_ema_snr",
                 "proxy_sigma_factor",
                 "proxy_sigma",
+                "proxy_current_best",
+                "proxy_best_so_far",
             },
         )
 

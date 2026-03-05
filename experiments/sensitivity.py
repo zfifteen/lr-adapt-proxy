@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 
+from experiments.awf_utils import projected_awf, projected_n_floor
 from experiments.io import (
     ensure_dir,
     load_yaml_config,
@@ -33,10 +34,33 @@ def _variant_signature(params: dict[str, Any]) -> tuple[float, float, float, flo
     )
 
 
+def _projected_geometry_metrics(config: dict[str, Any], params: dict[str, Any]) -> dict[str, float]:
+    eval_budget = int(config["budget"]["evals_per_run"])
+    base_popsize = int(config["cma"]["base_popsize"])
+    if eval_budget % base_popsize != 0:
+        raise ValueError("Sensitivity eval budget must be divisible by base popsize for projected generation math.")
+
+    planned_generations = eval_budget // base_popsize
+    n_floor_projected = projected_n_floor(
+        sigma_min_ratio=float(params["sigma_min_ratio"]),
+        sigma_down_factor=float(params["sigma_down_factor"]),
+    )
+    awf_projected = projected_awf(
+        sigma_min_ratio=float(params["sigma_min_ratio"]),
+        sigma_down_factor=float(params["sigma_down_factor"]),
+        planned_generations=planned_generations,
+    )
+    return {
+        "planned_generations": float(planned_generations),
+        "n_floor_projected": float(n_floor_projected),
+        "awf_projected": float(awf_projected),
+    }
+
+
 def _build_variants(config: dict[str, Any]) -> list[dict[str, Any]]:
     base = dict(config["lr_adapt_proxy"])
     variants: list[dict[str, Any]] = []
-    seen: set[tuple[float, float, float, float, float, float]] = set()
+    seen: set[tuple[float, float, float, float, float, float, float]] = set()
 
     def add_variant(variant_id: str, group: str, params: dict[str, Any]) -> None:
         sig = _variant_signature(params)
@@ -50,6 +74,18 @@ def _build_variants(config: dict[str, Any]) -> list[dict[str, Any]]:
                 "lr_params": dict(params),
             }
         )
+
+    if str(config.get("variant_mode", "")).strip().lower() == "explicit":
+        explicit_variants = list(config.get("variants", []))
+        if not explicit_variants:
+            raise ValueError("variant_mode=explicit requires non-empty variants list")
+        for idx, entry in enumerate(explicit_variants):
+            variant_id = str(entry.get("variant_id", f"variant_{idx + 1}"))
+            variant_group = str(entry.get("variant_group", "explicit"))
+            params = dict(base)
+            params.update(dict(entry.get("lr_params", {})))
+            add_variant(variant_id, variant_group, params)
+        return variants
 
     add_variant("baseline", "baseline", dict(base))
 
@@ -79,7 +115,13 @@ def _build_variants(config: dict[str, Any]) -> list[dict[str, Any]]:
     return variants
 
 
-def _make_jobs_for_variant(config: dict[str, Any], variant: dict[str, Any]) -> list[dict[str, Any]]:
+def _make_jobs_for_variant(
+    config: dict[str, Any],
+    variant: dict[str, Any],
+    *,
+    proxy_trace_mode: str,
+    proxy_trace_root: str | None,
+) -> list[dict[str, Any]]:
     jobs: list[dict[str, Any]] = []
     cells = build_cells(config["matrix"])
     eval_seeds = [int(s) for s in config["seeds"]["eval"]]
@@ -100,6 +142,10 @@ def _make_jobs_for_variant(config: dict[str, Any], variant: dict[str, Any]) -> l
                         "base_popsize": int(config["cma"]["base_popsize"]),
                         "cma_verbose": int(config["cma"].get("verbose", -9)),
                         "lr_proxy_params": dict(variant["lr_params"]),
+                        "variant_id": str(variant["variant_id"]),
+                        "variant_group": str(variant["variant_group"]),
+                        "proxy_trace_mode": proxy_trace_mode,
+                        "proxy_trace_root": proxy_trace_root,
                     }
                 )
     return jobs
@@ -183,15 +229,32 @@ def run_sensitivity_sweep(
     run_id = explicit_run_id or make_run_id(config_hash, created_at)
 
     variants = _build_variants(config)
+    telemetry_cfg = dict(config.get("telemetry", {}))
+    proxy_trace_mode = str(telemetry_cfg.get("proxy_trace_mode", "off"))
+    proxy_trace_root = str(out_path / "proxy_traces") if proxy_trace_mode.lower() not in {"off", "none", "false", "0"} else None
+    if proxy_trace_root is not None:
+        ensure_dir(proxy_trace_root)
+
+    for variant in variants:
+        variant.update(_projected_geometry_metrics(config=config, params=variant["lr_params"]))
+
     all_rows: list[dict[str, Any]] = []
     for variant in variants:
-        jobs = _make_jobs_for_variant(config, variant)
+        jobs = _make_jobs_for_variant(
+            config,
+            variant,
+            proxy_trace_mode=proxy_trace_mode,
+            proxy_trace_root=proxy_trace_root,
+        )
         results = run_jobs(jobs, workers)
         for row in results:
             row["variant_id"] = variant["variant_id"]
             row["variant_group"] = variant["variant_group"]
             for key, value in variant["lr_params"].items():
                 row[f"lr_{key}"] = value
+            row["planned_generations"] = float(variant["planned_generations"])
+            row["n_floor_projected"] = float(variant["n_floor_projected"])
+            row["awf_projected"] = float(variant["awf_projected"])
             all_rows.append(row)
 
     runs_df = pd.DataFrame(all_rows)
@@ -218,6 +281,9 @@ def run_sensitivity_sweep(
         row["variant_group"] = variant["variant_group"]
         for key, value in variant["lr_params"].items():
             row[f"lr_{key}"] = value
+        row["planned_generations"] = float(variant["planned_generations"])
+        row["n_floor_projected"] = float(variant["n_floor_projected"])
+        row["awf_projected"] = float(variant["awf_projected"])
         summary_rows.append(row)
 
     cell_df = pd.concat(cell_frames, ignore_index=True) if cell_frames else pd.DataFrame()
@@ -225,8 +291,23 @@ def run_sensitivity_sweep(
 
     cell_path = out_path / "sensitivity_cell_stats.csv"
     summary_path = out_path / "sensitivity_summary.csv"
+    variant_meta_path = out_path / "awf_variant_metadata.csv"
     save_csv(cell_path, cell_df)
     save_csv(summary_path, summary_df)
+    variant_meta = pd.DataFrame(
+        [
+            {
+                "variant_id": v["variant_id"],
+                "variant_group": v["variant_group"],
+                "planned_generations": v["planned_generations"],
+                "n_floor_projected": v["n_floor_projected"],
+                "awf_projected": v["awf_projected"],
+                **{f"lr_{k}": value for k, value in v["lr_params"].items()},
+            }
+            for v in variants
+        ]
+    )
+    save_csv(variant_meta_path, variant_meta)
 
     findings_path = out_path / "findings_sensitivity.md"
     findings_path.write_text(_build_findings_sensitivity_markdown(summary_df, run_id, out_path), encoding="utf-8")
@@ -245,6 +326,7 @@ def run_sensitivity_sweep(
                 "sensitivity_runs_long_csv": str(runs_path),
                 "sensitivity_cell_stats_csv": str(cell_path),
                 "sensitivity_summary_csv": str(summary_path),
+                "awf_variant_metadata_csv": str(variant_meta_path),
                 "findings_sensitivity_md": str(findings_path),
             },
         },
@@ -255,6 +337,7 @@ def run_sensitivity_sweep(
         "sensitivity_runs_long_csv": str(runs_path),
         "sensitivity_cell_stats_csv": str(cell_path),
         "sensitivity_summary_csv": str(summary_path),
+        "awf_variant_metadata_csv": str(variant_meta_path),
         "findings_sensitivity_md": str(findings_path),
         "sensitivity_manifest_json": str(manifest_path),
     }

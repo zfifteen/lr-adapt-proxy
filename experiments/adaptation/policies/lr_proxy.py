@@ -91,6 +91,8 @@ class LRProxyPolicy:
             "proxy_ema_snr": self.ema_snr,
             "proxy_sigma_factor": factor,
             "proxy_sigma": next_value,
+            "proxy_current_best": current_best,
+            "proxy_best_so_far": prev_best,
         }
         return AdaptationStep(
             action=AdaptationAction(

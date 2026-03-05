@@ -183,3 +183,12 @@ def parse_breakdown_args() -> argparse.Namespace:
         help="Method name to profile (default: lr_adapt_proxy)",
     )
     return parser.parse_args()
+
+
+def parse_awf_analysis_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Analyze AWF mechanism sweep artifacts.")
+    parser.add_argument("--runs", required=True, help="Path to sensitivity_runs_long.csv")
+    parser.add_argument("--cell-stats", required=True, help="Path to sensitivity_cell_stats.csv")
+    parser.add_argument("--summary", required=True, help="Path to sensitivity_summary.csv")
+    parser.add_argument("--outdir", required=True, help="Directory for AWF analysis outputs")
+    return parser.parse_args()

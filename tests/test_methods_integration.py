@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import unittest
 
 from experiments.methods import run_experiment_job
@@ -39,12 +40,19 @@ class MethodsIntegrationTests(unittest.TestCase):
         self.assertGreaterEqual(result["generations"], 1)
         self.assertIn("proxy_sigma_factor_last", result)
         self.assertIn("proxy_ema_snr_last", result)
+        self.assertIn("proxy_time_to_first_floor_gen", result)
+        self.assertIn("proxy_fraction_at_floor", result)
+        self.assertIn("proxy_n_down_steps", result)
+        self.assertIn("proxy_trace_written", result)
+        self.assertFalse(math.isnan(result["proxy_fraction_at_floor"]))
 
     def test_vanilla_job_keeps_default_proxy_summary_fields(self) -> None:
         result = run_experiment_job(self._base_job("vanilla_cma"))
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["proxy_sigma_factor_last"], 1.0)
         self.assertEqual(result["proxy_ema_snr_last"], 0.0)
+        self.assertTrue(math.isnan(result["proxy_fraction_at_floor"]))
+        self.assertTrue(math.isnan(result["proxy_time_to_first_floor_gen"]))
 
     def test_pop4x_budget_divisibility_and_status(self) -> None:
         result = run_experiment_job(self._base_job("pop4x"))
