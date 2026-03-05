@@ -4,8 +4,10 @@
 This document describes the repository-local `lr_adapt_proxy` mechanism used in the pycma rerun pipeline. It is intentionally labeled a proxy and is not claimed as an exact reimplementation of external LR-Adapt variants.
 
 Primary implementation references:
-- `experiments/lr_adapt_proxy.py` (update rule)
-- `experiments/methods.py` (post-`tell` wiring)
+- `experiments/adaptation/policies/lr_proxy.py` (policy update rule)
+- `experiments/adaptation/clients/pycma_sigma.py` (sigma action application)
+- `experiments/lr_adapt_proxy.py` (legacy-compatible shim)
+- `experiments/methods.py` (post-`tell` policy/context wiring)
 - `docs/analysis/rerun_protocol.md` (protocol caveat and evaluation context)
 
 ## What Vanilla CMA-ES Does vs What the Proxy Adds
@@ -16,6 +18,11 @@ Vanilla CMA-ES (`vanilla_cma`) uses pycma's internal adaptation path in `tell` (
 2. Smooth with EMA.
 3. Apply multiplicative sigma up/down factor based on thresholds.
 4. Clamp sigma to configured bounds relative to initial sigma.
+
+Current code path separation:
+- Policy (`LRProxyPolicy`) computes the decision and diagnostics.
+- Client adapter (`apply_sigma_action`) applies the returned `next_value` to `es.sigma`.
+- Compatibility shim is maintained for legacy callsites.
 
 No direct covariance-matrix equation is replaced by this proxy. The direct write is to `es.sigma`; covariance effects are indirect via subsequent sampling.
 

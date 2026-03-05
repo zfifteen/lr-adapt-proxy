@@ -8,7 +8,9 @@ from typing import Any
 import cma
 import numpy as np
 
-from experiments.lr_adapt_proxy import LRProxyState, apply_lr_adapt_proxy
+from experiments.adaptation.clients.pycma_sigma import apply_sigma_action
+from experiments.adaptation.policies.lr_proxy import LRProxyParams, LRProxyPolicy
+from experiments.adaptation.types import AdaptationContext
 from experiments.objectives import noisy_objective
 
 
@@ -23,10 +25,10 @@ def method_flags(method_name: str) -> dict[str, Any]:
     if method_name not in ALL_METHODS:
         raise ValueError(f"Unknown method: {method_name}")
 
-    use_lr = method_name == "lr_adapt_proxy"
+    has_adaptation_policy = method_name == "lr_adapt_proxy"
     popsize_multiplier = 4 if method_name == "pop4x" else 1
     return {
-        "use_lr": use_lr,
+        "has_adaptation_policy": has_adaptation_policy,
         "popsize_multiplier": popsize_multiplier,
     }
 
@@ -88,7 +90,13 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
         }
         es = cma.CMAEvolutionStrategy(x0.tolist(), initial_sigma, opts)
 
-        lr_state = LRProxyState(initial_sigma=initial_sigma)
+        policy = None
+        if flags["has_adaptation_policy"]:
+            policy = LRProxyPolicy(
+                params=LRProxyParams.from_dict(lr_params),
+                initial_sigma=initial_sigma,
+            )
+
         best_so_far = np.inf
         eval_count = 0
         generations = 0
@@ -108,10 +116,18 @@ def run_experiment_job(job: dict[str, Any]) -> dict[str, Any]:
 
             es.tell(candidates.tolist(), fitness.tolist())
 
-            if flags["use_lr"]:
-                lr_diag = apply_lr_adapt_proxy(es, fitness, lr_state, lr_params)
-                proxy_sigma_factor_last = float(lr_diag["proxy_sigma_factor"])
-                proxy_ema_snr_last = float(lr_diag["proxy_ema_snr"])
+            if policy is not None:
+                step = policy.step(
+                    AdaptationContext(
+                        fitness=fitness,
+                        generation_index=generations,
+                        current_value=float(es.sigma),
+                        direction="minimize",
+                    )
+                )
+                apply_sigma_action(es, step.action)
+                proxy_sigma_factor_last = float(step.diagnostics["proxy_sigma_factor"])
+                proxy_ema_snr_last = float(step.diagnostics["proxy_ema_snr"])
 
             eval_count += popsize
             generations += 1

@@ -13,6 +13,12 @@ Derivation and design rationale: the goal is not to invent a brand-new optimizer
 
 Relation to prior work: the proxy is inspired by the signal-to-noise adaptation philosophy in Nomura, Akimoto and Ono's LRA-CMA-ES (arXiv:2304.03473; extended arXiv:2401.15876), but this implementation is deliberately lightweight and external. It operates after pycma `tell` and only mutates `es.sigma`.
 
+Current implementation architecture:
+- Policy logic is implemented in `experiments/adaptation/policies/lr_proxy.py` (`LRProxyPolicy`).
+- Action application is implemented in `experiments/adaptation/clients/pycma_sigma.py` (`apply_sigma_action`).
+- `experiments/lr_adapt_proxy.py` is retained as a compatibility shim delegating to the policy/adaptor path.
+- Runner integration in `experiments/methods.py` is context/action-based.
+
 ## 1. Scope and Claim Boundaries
 This document is the canonical technical specification for the repository-local `lr_adapt_proxy` algorithm and associated pipeline contracts.
 
